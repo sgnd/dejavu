@@ -72,6 +72,9 @@ has "failed:"
 expect 1 dejavu install ripgrep@99.99.99
 expect 0 dejavu install system:tree
 expect 0 sh -lc 'tree --version'
+# A plain name that comes from npm gets node first (before anything else installs node).
+expect 0 dejavu install prettier
+expect 0 sh -lc 'prettier --version'
 expect 0 dejavu install npm:cowsay
 expect 0 sh -lc 'cowsay hi'
 expect 0 dejavu install pypi:httpie # installs uv first

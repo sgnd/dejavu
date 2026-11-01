@@ -122,7 +122,8 @@ start() {
 # The keyboard is not connected, so nothing can wait for an answer.
 run() {
   printf '\n$ %s\n' "$*" >>"$LOG"
-  if "$@" </dev/null >"$TMP/step" 2>&1; then rc=0; else rc=$?; fi
+  if "$@" </dev/null >"$TMP/out" 2>&1; then rc=0; else rc=$?; fi
+  grep -v -e '░' -e '████' "$TMP/out" >"$TMP/step" || true # without mise's progress bars
   cat "$TMP/step" >>"$LOG"
   [ "$rc" = 0 ] || cp "$TMP/step" "$TMP/fail"
   return "$rc"
@@ -143,7 +144,7 @@ failed() {
   FAILED=$((FAILED + 1))
   printf 'failed: %s\n' "$*"
   if [ -s "$TMP/fail" ]; then
-    grep -v -e '░' -e '████' "$TMP/fail" | tail -n 12 | sed 's/^/    /' # without progress bars
+    tail -n 12 "$TMP/fail" | sed 's/^/    /'
     hint
     printf '    Full log: %s\n' "$LOG"
   fi
@@ -397,8 +398,11 @@ shims() { LC_ALL=C ls "$SHIMS" 2>/dev/null || true; }
 # Usage: mise_install SPEC. Sets MSG. Returns 0 ok, 1 failed.
 mise_install() {
   ensure_mise || return 1
-  # Some sources need a helper tool first.
-  case "$1" in
+  # Some sources need a helper tool first. A plain name can come from one too:
+  # prettier comes from npm. The registry says which source it uses.
+  src="$1"
+  case "$src" in *:*) ;; *) src="$("$MISE" registry "${1%%@*}" 2>/dev/null | cut -d ' ' -f 1)" ;; esac
+  case "$src" in
     npm:*) dep=node ;; # its programs run with node
     pypi:* | pipx:*) dep=uv ;;
     cargo:*) dep=rust ;;
@@ -415,7 +419,15 @@ mise_install() {
     sys="$dep"
     [ "$dep" != node ] || [ "${PM:-}" = brew ] || sys=nodejs
     why="could not install $dep, which $1 needs."
-    mise_install "$dep" || { find_pm && system install "$sys"; } || { MSG="$why $MSG"; return 1; }
+    if mise_install "$dep"; then
+      :
+    elif find_pm && system install "$sys"; then
+      :
+    else
+      rc=$?
+      MSG="$why $MSG"
+      return "$rc" # 3 when only the user can install it
+    fi
   fi
 
   say "Installing $1 with mise..."
@@ -443,13 +455,15 @@ mise_install() {
         run "$MISE" uninstall --all "${1%%@*}" || true
         run "$MISE" reshim || true
         MSG="mise installed $1, but its program does not run on this system."
+        lib="$(sed -n 's/.*error while loading shared libraries: \([^:]*\):.*/\1/p' "$TMP/fail" | head -n 1)"
+        [ -z "$lib" ] || MSG="mise installed $1, but its program needs the system library $lib, which is missing."
         return 1
       fi
     done
   fi
 
-  cmds="$(head -n 10 "$TMP/new" | tr '\n' ' ' | sed 's/ $//')"
-  more=$(($(wc -l <"$TMP/new") - 10))
+  cmds="$(head -n 20 "$TMP/new" | tr '\n' ' ' | sed 's/ $//')"
+  more=$(($(wc -l <"$TMP/new") - 20))
   [ "$more" -le 0 ] || cmds="$cmds and $more more"
   if [ -z "$cmds" ]; then
     MSG="$1 (with mise, it was already installed)"
@@ -457,10 +471,14 @@ mise_install() {
   fi
   MSG="$1 (with mise). Commands: $cmds"
   # This shell, and an agent's shell started before setup, may not have the shims in PATH yet.
+  # The example: the command named like the tool (python, not 2to3), else the first one.
+  name="${1%%@*}"
+  name="${name##*[:/]}"
+  example="$(grep -x -- "$name" "$TMP/new" || head -n 1 "$TMP/new")"
   case ":$PATH:" in
     *":$SHIMS:"*) ;;
     *) MSG="$MSG
-    This shell cannot find them by name yet. Use the full path ($SHIMS/NAME), or a new terminal." ;;
+    This shell cannot find it by name yet. Run it with its full path, like: $SHIMS/$example" ;;
   esac
   return 0
 }
@@ -486,7 +504,7 @@ install_one() {
       return
       ;;
     *:*)
-      if mise_install "$spec"; then report 0; else report 1; fi
+      if mise_install "$spec"; then report 0; else report $?; fi
       return
       ;;
   esac
@@ -494,7 +512,8 @@ install_one() {
     if system install "$spec"; then report 0; else report $?; fi
     return
   fi
-  mise_install "$spec" && { report 0; return; }
+  if mise_install "$spec"; then report 0 && return; else rc=$?; fi
+  [ "$rc" != 3 ] || { report 3; return; } # a helper needs the user
   # A version was asked for: don't install another one from the system package manager.
   case "$spec" in *@*) report 1 && return ;; esac
   why="$MSG"
@@ -507,8 +526,8 @@ install_one() {
     else
       rc=$?
     fi
+    MSG="$why So: $MSG"
     [ "$rc" = 3 ] && { report 3; return; }
-    MSG="$why Then: $MSG"
   else
     MSG="$why"
     cp "$TMP/mise-fail" "$TMP/fail"
@@ -751,8 +770,11 @@ main() {
       if find_pm; then
         pm_cmd search
         echo "From $PM (install with: dejavu install system:NAME):"
+        # Shortest names first: the exact name, then names that only contain it (pandoc before libghc-pandoc).
         # shellcheck disable=SC2086 # CMD is several words
-        $CMD "${1#*:}" </dev/null 2>/dev/null | head -n 15 | sed 's/^/  /' || true
+        $CMD "${1#*:}" </dev/null 2>/dev/null | grep -v '^ ' |
+          while IFS= read -r line; do n="${line%%[ :|]*}" && printf '%s\t%s\n' "${#n}" "$line"; done |
+          sort -n -s | cut -f 2- | head -n 15 | sed 's/^/  /' || true
       fi
       exit 0
       ;;

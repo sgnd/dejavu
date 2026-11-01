@@ -23,6 +23,8 @@ curl -fsSL https://raw.githubusercontent.com/sgnd/dejavu/main/dejavu | sh -s -- 
 
 Without curl, use `wget -qO- URL | sh -s -- setup`. Your shell may not find new commands until it restarts, so call it by its full path: `~/.local/bin/dejavu`.
 
+On a machine you don't know yet, run `dejavu doctor` once. It shows the system, whether you have admin rights (most often you don't), the package manager and the internet connection.
+
 ## 2. Install
 
 ```bash
@@ -35,7 +37,8 @@ dejavu install system:build-essential # a system package (often needs admin righ
 - **Find the name first** when you are not sure: `dejavu search WORD`. Then use a name from the list exactly as it is shown. Never guess package names for `npm:`, `pypi:`, `cargo:` or `github:`. Attackers publish packages under names that AI agents make up. Use a name from the search, the tool's official docs, or the user.
 - **Which kind of name:**
   - A plain name (`ripgrep`, `gh`, `node`) uses mise when its registry knows the tool, else the system package manager.
-  - `npm:NAME`, `pypi:NAME`, `github:OWNER/REPO`, `cargo:NAME`, `go:MODULE` install from that source through mise. dejavu adds the helper they need (node, uv, rust or go).
+  - `npm:NAME`, `pypi:NAME`, `github:OWNER/REPO`, `cargo:NAME`, `go:MODULE` install from that source through mise.
+  - dejavu adds the helper a tool needs (node, uv, rust or go), also for plain names that come from such a source (like `prettier`, from npm).
   - `system:NAME` always uses the system package manager. Use it for servers and services (`system:nginx`, `system:postgresql`), libraries and build tools (`system:libpq-dev`, `system:build-essential`), and anything other users or system services must also find.
 
 ## 3. Read the result
@@ -48,6 +51,8 @@ Every package gets one line, and the exit code sums them up:
 | `failed: ...` | 1 | Read the lines under it: the end of the error, a `hint:` and the log file. Fix the cause, then run the same command again. |
 | (usage error) | 2 | Wrong command or name. Run `dejavu help`. |
 | `needs the user: ...` | 3 | Only the user can do this, usually type their password for `sudo`. Show them the exact command from the line, and say why. Don't try to get around it. |
+
+When a tool needs the user, another tool may do the same job without admin rights (for example a formatter that is one program, instead of one that needs node). Search for one and offer it, but let the user choose.
 
 After an install, your shell may not find the new command by name yet (`command not found`). The `ok:` line says so. Use the full path it shows (`~/.local/share/mise/shims/NAME`) or run `export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"` in the same command. Don't install the tool again.
 
@@ -71,3 +76,4 @@ Run `dejavu doctor` first when something looks wrong, or before a big install on
 - Run the same command again after you fix a failure. dejavu skips what is already there.
 - Two dejavu commands at once wait for each other. That is normal.
 - Tell the user what you installed. mise tools are listed in `~/.config/mise/config.toml`, which is their file.
+- A language version (`python@3.12`, `node@lts`) becomes the default for this user, in every folder. Tell them.
