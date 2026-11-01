@@ -54,9 +54,10 @@ You can also type the commands yourself:
 ```bash
 dejavu install ripgrep jq    # install one or more tools
 dejavu search pdf            # find the right name
-dejavu list                  # see what is installed
+dejavu list                  # your list: everything installed, with versions
 dejavu upgrade               # get the newest versions
 dejavu remove jq             # remove a tool
+dejavu restore FILE          # install everything from a list (see below)
 dejavu doctor                # check this computer when something is wrong
 dejavu help                  # all commands
 ```
@@ -66,6 +67,38 @@ Each tool gets one line back:
 - `ok:` it is installed. The line lists the new commands.
 - `failed:` it did not work. Below it: the error, a hint in plain words, and where the full log is.
 - `needs the user:` only you can do this, usually type your password. The line has the exact command to run in your terminal.
+
+## Move to a new computer
+
+dejavu writes down everything it installs, with the version, in one small text file: your list. `dejavu list` shows it, and where it is (`~/.config/dejavu/packages.txt`).
+
+1. **On the old computer:** copy that file somewhere safe: a USB stick, your cloud drive, or an email to yourself. Do it now and then, so a lost or broken computer does not lose it.
+2. **On the new computer:** [start dejavu](#start), then:
+
+   ```bash
+   dejavu restore packages.txt
+   ```
+
+   Or ask your agent: "Install everything from my dejavu list", and give it the file.
+
+That's it. dejavu installs everything on the list, and makes it your list on this computer. Good to know:
+
+- **Same tools, newest versions.** The list remembers what you asked for. `ripgrep` gets the newest version, `python@3.12` stays on 3.12. To get the exact old version, change the line, like `ripgrep` to `ripgrep@15.2.0` (the version is in the note after `#`).
+- **From Mac to Linux, or back:** that works. Tools from mise have the same name everywhere. A system package (a line with `system:`) can have another name on the other system. dejavu says which ones did not install, and `dejavu search` finds the new name.
+- **It stops halfway** (no internet, a laptop that went to sleep): run the same command again. It skips what is already there.
+- **Some need your password:** at the end, dejavu shows one command for all of them, so you type your password once. Run `dejavu restore packages.txt` again afterwards, so they are on your new list too.
+- **Your list on GitHub** (or another website): `dejavu restore https://.../packages.txt` works too. Only use a list you trust: it installs everything on it.
+- **Repair this computer:** `dejavu restore` without a file installs everything on your own list that is missing.
+
+The file is plain text. One package per line, and anything after `#` is a note:
+
+```text
+ripgrep  # 15.2.0, mise
+python@3.12  # 3.12.16, mise
+system:nginx  # 1.24.0-2ubuntu7, apt-get
+```
+
+You can edit it. To keep a tool off the list, use `dejavu remove`.
 
 ## Words used here
 
@@ -80,6 +113,7 @@ Each tool gets one line back:
 
 - `~/.local/bin`: dejavu itself, and mise (if you did not have it yet)
 - `~/.local/share/mise`: the tools that mise installs
+- `~/.config/dejavu/packages.txt`: your list. Everything installed with dejavu, with the version. Keep a copy: it is all you need to [move to a new computer](#move-to-a-new-computer).
 - `~/.config/mise/config.toml`: the list of your mise tools. It is your file, you can edit it.
 - One line at the end of your shell settings (`~/.profile`, and `~/.bashrc`, `~/.zprofile` or `~/.zshrc` if you use them), so new terminals find the tools. It ends with `# added by dejavu`.
 - `skills/dejavu/SKILL.md` in the folder of each AI agent it finds (Claude Code, Codex, Gemini CLI): the instructions that teach your agent to use dejavu.
@@ -98,7 +132,8 @@ Run `dejavu doctor` first. It shows your system, your admin rights, the package 
 | `needs the user: ... sudo ...` | Copy the command from that line into your terminal. It asks for your password. |
 | `GitHub limits downloads` | GitHub allows 60 downloads per hour without an account. Wait an hour, or log in with `gh auth login`. |
 | `No internet, or a sandbox blocks it` | Check your connection. Some AI agents run commands in a "sandbox" without internet: allow this command to use the network. |
-| `This name or version was not found` | Find the right name with `dejavu search WORD`. |
+| `This name or version was not found` | Find the right name with `dejavu search WORD`. After a restore from another system, change that line in your list to the new name. |
+| `Not a package name (line 7 of ...)` | That line of your list has a typo. Fix it, then run `dejavu restore` again. |
 | `command not found` right after an install | Open a new terminal. The `ok:` line also shows the full path of the tool. |
 | `Another dejavu is running` | Another install is busy. dejavu waits and then continues by itself. |
 
@@ -107,7 +142,7 @@ Still stuck? [Open an issue](https://github.com/sgnd/dejavu/issues/new?template=
 ## Remove dejavu
 
 1. Remove the tools you no longer need: `dejavu list`, then `dejavu remove NAME`.
-2. Delete dejavu and its logs: `rm -rf ~/.local/bin/dejavu ~/.local/state/dejavu`
+2. Delete dejavu and its logs: `rm -rf ~/.local/bin/dejavu ~/.local/state/dejavu`. Keep `~/.config/dejavu/packages.txt` if you may want your tools back later.
 3. Delete the line that ends with `# added by dejavu` from your shell settings, and the `skills/dejavu` folder of your AI agents.
 4. To also remove mise and all its tools: `mise implode`. Only do this if dejavu installed mise. (On a brework Mac, mise belongs to brework.)
 

@@ -96,6 +96,32 @@ has "admin rights: yes"
 command -v curl >/dev/null 2>&1 || expect 0 dejavu install system:curl
 expect 0 dejavu upgrade
 
+# --- Your list, and moving to another computer ---
+LIST="$HOME/.config/dejavu/packages.txt"
+expect 0 dejavu list
+has "jq  # "
+has "system:tree  # "
+expect 0 dejavu install JQ # again, in capitals: still one line
+[ "$(grep -c '^jq ' "$LIST")" = 1 ] || { failed=$((failed + 1)) && echo "FAIL: jq is in the list more than once"; }
+# A scoped npm name has an @ that is not a version.
+expect 0 dejavu install npm:@biomejs/biome
+has "Commands: biome"
+expect 0 dejavu remove npm:@biomejs/biome
+! grep -q biome "$LIST" || { failed=$((failed + 1)) && echo "FAIL: biome is still in the list"; }
+# Move: keep a copy of the list, lose a tool, then restore from the copy (a relative path, Windows line ends).
+cr="$(printf '\r')"
+sed "s/\$/$cr/" "$LIST" >/tmp/old-list.txt
+expect 0 dejavu remove jq
+expect 0 sh -c 'cd /tmp && dejavu restore old-list.txt'
+expect 0 sh -lc 'jq --version'
+printf 'jq\nnot;a;name\n' >/tmp/bad-list.txt
+expect 2 dejavu restore /tmp/bad-list.txt
+has "line 2"
+# A line for a package that is not installed here goes away with remove.
+echo "no-such-tool-zz9" >>"$LIST"
+expect 1 dejavu remove no-such-tool-zz9
+! grep -q no-such-tool-zz9 "$LIST" || { failed=$((failed + 1)) && echo "FAIL: no-such-tool-zz9 is still in the list"; }
+
 # --- Remove ---
 expect 0 dejavu remove jq
 expect 0 dejavu remove system:tree
@@ -116,6 +142,9 @@ if [ "$ID" != macos ] && command -v su >/dev/null 2>&1; then
   expect 0 as_bob "dejavu install jq"
   expect 3 as_bob "dejavu install system:htop"
   has "needs the user:"
+  # Several: one command at the end, so the user types the password once.
+  expect 3 as_bob "dejavu install system:htop system:tree"
+  has "all at once"
 
   # sudo with a password: dejavu cannot type it, so the user must run the command.
   # sudo without a password: dejavu installs system packages itself.

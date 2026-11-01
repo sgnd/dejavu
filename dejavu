@@ -37,7 +37,8 @@ Usage:
   dejavu remove NAME...    Remove tools (also: uninstall)
   dejavu upgrade [NAME...] Upgrade tools. No NAME: every mise tool, mise and dejavu
   dejavu search WORD       Find the right NAME
-  dejavu list              List the tools installed with mise
+  dejavu list              Show your list: everything installed with dejavu, with versions
+  dejavu restore [FILE|URL] Install everything in a list (yours, or one from another computer)
   dejavu doctor            Show this machine's setup, to find problems
   dejavu setup             Install mise and dejavu, set up PATH and the agent skill
 
@@ -52,6 +53,7 @@ NAME:
 Result lines start with "ok:", "failed:" or "needs the user:".
 Exit codes: 0 all ok, 1 something failed, 2 wrong usage,
 3 the user must do something (like type their password): tell them what the line says.
+Your list: ${XDG_CONFIG_HOME:-\$HOME/.config}/dejavu/packages.txt
 Logs: ${XDG_STATE_HOME:-\$HOME/.local/state}/dejavu
 EOF
 }
@@ -65,11 +67,13 @@ SELF=""
 BIN_DIR="$HOME/.local/bin" # where mise.run puts mise, and setup puts dejavu
 SHIMS="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/shims" # one small launcher per mise command
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dejavu"                  # logs and the lock
+LIST="${XDG_CONFIG_HOME:-$HOME/.config}/dejavu/packages.txt"              # everything installed with dejavu
 
 # Counters for the summary at the end.
 OK=0
 FAILED=0
 NEEDS=0
+NEED_PKGS="" # system packages that need the user, for one command at the end
 
 # --- Start, lock and log ---------------------------------------------------
 
@@ -172,6 +176,13 @@ hint() {
 
 # Print the result, and exit with 0 (all ok), 1 (something failed) or 3 (the user must act).
 finish() {
+  # Several system packages need the password: one command, so the user types it once.
+  # shellcheck disable=SC2086 # one word per package
+  set -- $NEED_PKGS
+  if [ $# -gt 1 ]; then
+    pm_cmd install
+    printf 'needs the user: to install them all at once, ask the user to run: sudo %s %s\n' "$CMD" "$*"
+  fi
   if [ $((OK + FAILED + NEEDS)) -gt 1 ]; then
     printf 'summary: %s ok, %s failed, %s need the user\n' "$OK" "$FAILED" "$NEEDS"
   fi
@@ -182,9 +193,18 @@ finish() {
 
 # Only names a package manager accepts: letters, digits and . _ + @ : / = ~ -
 # No spaces, no options (a leading -), nothing the shell could run.
+# Usage: check_name NAME [WHERE]
 check_name() {
   case "$1" in
-    "" | -* | *[!A-Za-z0-9._+@:/=~-]*) fail "Not a package name: '$1'. Use one name per argument, like: dejavu install ripgrep" ;;
+    "" | -* | *[!A-Za-z0-9._+@:/=~-]*) fail "Not a package name${2:+ ($2)}: '$1'. Use one name per argument, like: dejavu install ripgrep" ;;
+  esac
+}
+
+# The name without its version: node@lts -> node, npm:@scope/pkg@1.2 -> npm:@scope/pkg.
+base() {
+  case "$1" in
+    *:@*) b="${1#*:@}" && printf '%s:@%s\n' "${1%%:@*}" "${b%%@*}" ;;
+    *) printf '%s\n' "${1%%@*}" ;;
   esac
 }
 
@@ -220,7 +240,7 @@ find_pm() {
   return 1
 }
 
-# Set CMD to the command for ACTION: install, remove, upgrade, search, refresh, or
+# Set CMD to the command for ACTION: install, remove, upgrade, search, refresh, version, or
 # can-remove (succeeds only when no other package needs the package).
 pm_cmd() {
   case "$PM:$1" in
@@ -252,6 +272,11 @@ pm_cmd() {
     brew:remove) CMD="brew uninstall --formula" ;; # stops if another package needs it
     brew:upgrade) CMD="brew upgrade --formula" ;;
     brew:search) CMD="brew search --formula" ;;
+    apt-get:version) CMD="dpkg-query -W -f=\${Version}" ;;
+    dnf:version | yum:version | zypper:version) CMD="rpm -q --qf %{VERSION}-%{RELEASE}" ;;
+    pacman:version) CMD="pacman -Q" ;;
+    apk:version) CMD="apk list -I" ;;
+    brew:version) CMD="brew list --versions --formula" ;;
     *) CMD="" ;;
   esac
 }
@@ -341,6 +366,7 @@ system() {
   fi
   if [ "$rc" = 3 ]; then
     MSG="$2 needs admin rights. Ask the user to run this in their terminal (it asks for their password): $USER_CMD"
+    [ "$1" != install ] || NEED_PKGS="$NEED_PKGS $2"
     return 3
   fi
   MSG="$2: $PM could not $1 it."
@@ -401,7 +427,7 @@ mise_install() {
   # Some sources need a helper tool first. A plain name can come from one too:
   # prettier comes from npm. The registry says which source it uses.
   src="$1"
-  case "$src" in *:*) ;; *) src="$("$MISE" registry "${1%%@*}" 2>/dev/null | cut -d ' ' -f 1)" ;; esac
+  case "$src" in *:*) ;; *) src="$("$MISE" registry "$(base "$1")" 2>/dev/null | cut -d ' ' -f 1)" ;; esac
   case "$src" in
     npm:*) dep=node ;; # its programs run with node
     pypi:* | pipx:*) dep=uv ;;
@@ -451,8 +477,8 @@ mise_install() {
         cp "$TMP/step" "$TMP/fail"
         cat "$TMP/step" >>"$LOG"
         # Remove it completely, or its shim would hide a working copy from the system package manager.
-        run "$MISE" unuse --global "${1%%@*}" || true
-        run "$MISE" uninstall --all "${1%%@*}" || true
+        run "$MISE" unuse --global "$(base "$1")" || true
+        run "$MISE" uninstall --all "$(base "$1")" || true
         run "$MISE" reshim || true
         MSG="mise installed $1, but its program does not run on this system."
         lib="$(sed -n 's/.*error while loading shared libraries: \([^:]*\):.*/\1/p' "$TMP/fail" | head -n 1)"
@@ -466,13 +492,13 @@ mise_install() {
   more=$(($(wc -l <"$TMP/new") - 20))
   [ "$more" -le 0 ] || cmds="$cmds and $more more"
   if [ -z "$cmds" ]; then
-    MSG="$1 (with mise, it was already installed)"
+    MSG="$1 (with mise. Its commands were already there)"
     return 0
   fi
   MSG="$1 (with mise). Commands: $cmds"
   # This shell, and an agent's shell started before setup, may not have the shims in PATH yet.
   # The example: the command named like the tool (python, not 2to3), else the first one.
-  name="${1%%@*}"
+  name="$(base "$1")"
   name="${name##*[:/]}"
   example="$(grep -x -- "$name" "$TMP/new" || head -n 1 "$TMP/new")"
   case ":$PATH:" in
@@ -483,9 +509,154 @@ mise_install() {
   return 0
 }
 
+# --- Your list ------------------------------------------------------------------
+# One file with everything installed with dejavu, so `dejavu restore` can install
+# it all again on another computer. One package per line, then a note: version, how.
+
+# Set VER and VIA (mise or the package manager) for an installed package. Empty if not installed.
+version_of() {
+  VER=""
+  VIA=""
+  vkey="$(base "$1")"
+  case "$vkey" in
+    system:*) ;;
+    *)
+      if in_mise "$vkey"; then
+        VIA=mise
+        VER="$("$MISE" ls --global 2>/dev/null | while read -r n v _; do [ "$n" != "$vkey" ] || echo "$v"; done | head -n 1)"
+        return 0
+      fi
+      ;;
+  esac
+  find_pm || return 0
+  n="${vkey#system:}"
+  pm_cmd version
+  # shellcheck disable=SC2086 # CMD is several words
+  v="$($CMD "$n" 2>/dev/null)" || return 0
+  # "jq 1.8.1", "busybox-1.37.0-r20 aarch64 ...", "5.2.37-2": keep the version.
+  v="$(printf '%s\n' "$v" | head -n 1)"
+  v="${v#"$n "}"
+  v="${v#"$n-"}"
+  VER="${v%% *}"
+  [ -z "$VER" ] || VIA="$PM"
+}
+
+# Print the list without the line of package KEY. FOUND: the name on that line, if there was one.
+list_without() {
+  k="$1"
+  FOUND=""
+  [ -f "$LIST" ] || return 0
+  while IFS= read -r l || [ -n "$l" ]; do
+    # shellcheck disable=SC2086 # the words before the note
+    set -- ${l%%#*}
+    if [ $# -gt 0 ] && [ "$(base "$1")" = "$k" ]; then
+      FOUND="$1"
+      continue
+    fi
+    printf '%s\n' "$l"
+  done <"$LIST"
+}
+
+# Replace the list with $TMP/list. A list that cannot be saved never stops an install.
+save_list() {
+  if mkdir -p "$(dirname "$LIST")" 2>/dev/null && cp "$TMP/list" "$LIST.new" 2>/dev/null; then
+    mv -f "$LIST.new" "$LIST"
+  else
+    say "Could not save your list in $LIST."
+  fi
+}
+
+# Write down an installed package, with its version.
+record() {
+  version_of "$1"
+  note="$VER"
+  [ -z "$VIA" ] || note="${note:+$note, }$VIA"
+  {
+    if [ -f "$LIST" ]; then
+      list_without "$(base "$1")"
+    else
+      echo "# dejavu: the tools installed on this computer."
+      echo "# To install them all on another computer, copy this file there and run: dejavu restore FILE"
+      echo "# One package per line. To keep a version, write it like this: ripgrep@15.2.0. Text after # is a note."
+      echo
+    fi
+    printf '%s%s\n' "$1" "${note:+  # $note}"
+  } >"$TMP/list"
+  save_list
+}
+
+forget() {
+  [ -f "$LIST" ] || return 0
+  list_without "$(base "$1")" >"$TMP/list"
+  [ -z "$FOUND" ] || save_list
+}
+
+# Update the version in the list, for a package that is in it.
+refresh_version() {
+  list_without "$(base "$1")" >/dev/null
+  [ -z "$FOUND" ] || record "$FOUND"
+}
+
+# The package names in a list file, one per line. Usage: list_names FILE WHERE
+# Forgiving with hand-edited files: blank lines, notes, Windows line ends, several names on a line.
+list_names() {
+  bom="$(printf '\357\273\277')"
+  tr -d '\r' <"$1" | sed "1s/^$bom//" >"$TMP/clean"
+  where="$2"
+  nr=0
+  while IFS= read -r l || [ -n "$l" ]; do
+    nr=$((nr + 1))
+    # shellcheck disable=SC2086 # the words before the note
+    for w in ${l%%#*}; do
+      check_name "$w" "line $nr of $where"
+      printf '%s\n' "$w"
+    done
+  done <"$TMP/clean"
+}
+
+show_list() {
+  if ! grep -qv -e '^#' -e '^[[:space:]]*$' "$LIST" 2>/dev/null; then
+    echo "Nothing is installed with dejavu yet. Your list will be in $LIST"
+    return 0
+  fi
+  echo "Your list is in $LIST"
+  echo "To install all of it on another computer: copy this file there, then run: dejavu restore FILE"
+  echo
+  grep -v -e '^#' -e '^[[:space:]]*$' "$LIST"
+}
+
+# Install everything in a list: a file, a URL, or your own list (to repair this computer).
+restore() {
+  src="$1"
+  case "$src" in
+    http://* | https://*) fetch "$src" >"$TMP/restore" 2>"$TMP/fail" || fail "Could not download the list from $src" ;;
+    *)
+      [ -f "$src" ] || fail "No list at $src. On the old computer, dejavu list shows where the list is."
+      cp "$src" "$TMP/restore"
+      ;;
+  esac
+  list_names "$TMP/restore" "$src" >"$TMP/names"
+  count="$(wc -l <"$TMP/names" | tr -d ' ')"
+  if [ "$count" = 0 ]; then
+    MSG="the list $src has no packages"
+    report 0
+    return
+  fi
+  say "Installing the $count packages in $src. This can take a while. Don't stop it halfway."
+  # A for loop, not `while read`: an install must not read the next names as its input.
+  # shellcheck disable=SC2013 # names have no spaces
+  for n in $(cat "$TMP/names"); do install_and_record "$n"; done
+}
+
+install_and_record() {
+  install_one "$1"
+  [ "$LAST" != 0 ] || record "$spec"
+}
+
 # --- Commands -----------------------------------------------------------------
 
-report() { # Usage: report STATUS (from the last function)
+report() { # Usage: report STATUS (from the last function). LAST keeps it.
+  LAST="$1"
   case "$1" in
     0) ok "$MSG" ;;
     3) needs_user "$MSG" ;;
@@ -493,11 +664,17 @@ report() { # Usage: report STATUS (from the last function)
   esac
 }
 
+# Agents write "FFmpeg" or "Ripgrep". Plain names are lowercase in every package manager.
+# (Not github:Owner/Repo: there the case matters.)
+lower() {
+  case "$1" in
+    *:*) printf '%s\n' "$1" ;;
+    *) printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' ;;
+  esac
+}
+
 install_one() {
-  spec="$1"
-  # Agents write "FFmpeg" or "Ripgrep". Plain names are lowercase in every package manager.
-  # (Not github:Owner/Repo: there the case matters.)
-  case "$spec" in *:*) ;; *) spec="$(printf '%s' "$spec" | tr '[:upper:]' '[:lower:]')" ;; esac
+  spec="$(lower "$1")"
   case "$spec" in
     system:*)
       if system install "${spec#system:}"; then report 0; else report $?; fi
@@ -508,7 +685,7 @@ install_one() {
       return
       ;;
   esac
-  if ! in_registry "${spec%%@*}"; then
+  if ! in_registry "$(base "$spec")"; then
     if system install "$spec"; then report 0; else report $?; fi
     return
   fi
@@ -536,16 +713,16 @@ install_one() {
 }
 
 remove_one() {
-  spec="$1"
+  spec="$(lower "$1")"
   case "$spec" in
     system:*)
       if system remove "${spec#system:}"; then report 0; else report $?; fi
       return
       ;;
   esac
-  if in_mise "${spec%%@*}"; then
+  if in_mise "$(base "$spec")"; then
     say "Removing $spec with mise..."
-    if run "$MISE" unuse --global "${spec%%@*}"; then
+    if run "$MISE" unuse --global "$(base "$spec")"; then
       MSG="removed $spec (with mise)"
       report 0
     else
@@ -570,16 +747,16 @@ remove_one() {
 }
 
 upgrade_one() {
-  spec="$1"
+  spec="$(lower "$1")"
   case "$spec" in
     system:*)
       if system upgrade "${spec#system:}"; then report 0; else report $?; fi
       return
       ;;
   esac
-  if in_mise "${spec%%@*}"; then
+  if in_mise "$(base "$spec")"; then
     say "Upgrading $spec with mise..."
-    if run "$MISE" upgrade "${spec%%@*}"; then
+    if run "$MISE" upgrade "$(base "$spec")"; then
       MSG="$spec is up to date (with mise)"
       report 0
     else
@@ -604,6 +781,11 @@ upgrade_all() {
   fi
   if [ -f "$BIN_DIR/dejavu" ]; then
     if install_self download; then report 0; else report 1; fi
+  fi
+  if [ -f "$LIST" ]; then
+    list_names "$LIST" "$LIST" >"$TMP/names" 2>/dev/null || true
+    # shellcheck disable=SC2013 # names have no spaces
+    for n in $(cat "$TMP/names"); do record "$n"; done
   fi
   say "System packages are not upgraded all at once, because it can restart services. Upgrade one with: dejavu upgrade system:NAME"
 }
@@ -740,6 +922,13 @@ main() {
   [ $# = 0 ] || shift
   case "$cmd" in
     install | add | remove | uninstall | upgrade | update) ;;
+    restore)
+      [ $# -le 1 ] || fail "Restore one list, for example: dejavu restore packages.txt"
+      # A file name is relative to this folder: dejavu moves to the home folder later.
+      src="${1:-$LIST}"
+      case "$src" in /* | http://* | https://*) ;; *) src="$PWD/$src" ;; esac
+      set --
+      ;;
     *) [ $# = 0 ] || [ "$cmd" = search ] || fail "dejavu $cmd takes no names. See: dejavu help" ;;
   esac
   for n in "$@"; do check_name "$n"; done
@@ -749,16 +938,32 @@ main() {
       [ $# -gt 0 ] || fail "Which tool? For example: dejavu install ripgrep"
       start
       say "This can take a few minutes for big tools. Don't stop it halfway."
-      for n in "$@"; do install_one "$n"; done
+      for n in "$@"; do install_and_record "$n"; done
       ;;
     remove | uninstall)
       [ $# -gt 0 ] || fail "Which tool? For example: dejavu remove ripgrep"
       start
-      for n in "$@"; do remove_one "$n"; done
+      for n in "$@"; do
+        remove_one "$n"
+        # Off the list when it is gone, or was never installed here (like after a restore that failed).
+        if [ "$LAST" = 0 ]; then
+          forget "$spec"
+        else
+          version_of "$spec"
+          [ -n "$VER" ] || forget "$spec"
+        fi
+      done
       ;;
     upgrade | update)
       start
-      if [ $# = 0 ]; then upgrade_all; else for n in "$@"; do upgrade_one "$n"; done; fi
+      if [ $# = 0 ]; then
+        upgrade_all
+      else
+        for n in "$@"; do
+          upgrade_one "$n"
+          [ "$LAST" != 0 ] || refresh_version "$spec"
+        done
+      fi
       ;;
     search)
       [ $# = 1 ] || fail "Search for one word, for example: dejavu search grep"
@@ -779,11 +984,12 @@ main() {
       exit 0
       ;;
     list | ls)
-      start
-      ensure_mise || { report 1; finish; }
-      "$MISE" ls --global
-      echo "(System packages are not listed here. See your system package manager.)"
+      show_list
       exit 0
+      ;;
+    restore)
+      start
+      restore "$src"
       ;;
     doctor)
       OS=linux

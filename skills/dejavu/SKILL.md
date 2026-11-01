@@ -1,6 +1,6 @@
 ---
 name: dejavu
-description: Install, remove, upgrade or find CLI tools, languages and system packages on Linux or macOS with one command (dejavu), without questions or admin rights where possible. Use it whenever a task needs a program that is missing (command not found), or the user asks to install, remove or update software. Use it instead of apt, brew, dnf, npm -g, pip install or curl | sh.
+description: Install, remove, upgrade or find CLI tools, languages and system packages on Linux or macOS with one command (dejavu), without questions or admin rights where possible. Use it whenever a task needs a program that is missing (command not found), the user asks to install, remove or update software, or wants their tools on a new computer. Use it instead of apt, brew, dnf, npm -g, pip install or curl | sh.
 ---
 
 # Install software with dejavu
@@ -56,10 +56,26 @@ When a tool needs the user, another tool may do the same job without admin right
 
 After an install, your shell may not find the new command by name yet (`command not found`). The `ok:` line says so. Use the full path it shows (`~/.local/share/mise/shims/NAME`) or run `export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"` in the same command. Don't install the tool again.
 
-## 4. Other commands
+## 4. Move to a new computer
+
+dejavu writes every install into the user's list, `~/.config/dejavu/packages.txt`, with the version. `dejavu list` shows it.
 
 ```bash
-dejavu list               # tools installed with mise
+dejavu restore packages.txt          # install everything on a list (a file from the old computer)
+dejavu restore https://.../list.txt  # or from a URL
+dejavu restore                       # repair: install what is missing from the user's own list
+```
+
+- Before you restore a list that is not the user's own, show them what is on it and ask. It installs everything on it.
+- Restoring can take long: run it in the background or with a long timeout. If it stops, run it again; it skips what is there.
+- Lines with `system:` may have another name on another system (Mac and Linux). For each one that failed, find the name with `dejavu search`, install it, and tell the user.
+- When the result ends with "to install them all at once, ask the user to run: sudo ...", show that one command. After the user ran it, run the same `dejavu restore` (or `dejavu install system:NAME`) again, so the packages get on the list.
+- Remind the user to keep a copy of their list somewhere safe (cloud drive, USB stick). It is all they need to move.
+
+## 5. Other commands
+
+```bash
+dejavu list               # the user's list: everything installed with dejavu, with versions
 dejavu upgrade            # every mise tool, mise and dejavu (not system packages)
 dejavu upgrade jq         # one tool; system:NAME for a system package
 dejavu remove jq          # ask the user first
@@ -74,6 +90,7 @@ Run `dejavu doctor` first when something looks wrong, or before a big install on
 - Never run dejavu with `sudo`. It asks for admin rights itself, and stops with "needs the user" when only a password helps.
 - Ask the user before you remove anything, and before you install system packages on a server that runs services.
 - Run the same command again after you fix a failure. dejavu skips what is already there.
+- After the user ran a `sudo` command that dejavu gave them, run the same dejavu command again: it is quick, and it puts the package on their list.
 - Two dejavu commands at once wait for each other. That is normal.
 - Tell the user what you installed. mise tools are listed in `~/.config/mise/config.toml`, which is their file.
 - A language version (`python@3.12`, `node@lts`) becomes the default for this user, in every folder. Tell them.
