@@ -102,7 +102,8 @@ start() {
   waited=0
   until mkdir "$STATE_DIR/lock" 2>/dev/null; do
     pid="$(cat "$STATE_DIR/lock/pid" 2>/dev/null || true)"
-    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+    # Stopped dejavu: its process is gone, or (in a new container) its number is now ours.
+    if [ -n "$pid" ] && { [ "$pid" = $$ ] || ! kill -0 "$pid" 2>/dev/null; }; then
       rm -rf "$STATE_DIR/lock" # left behind by a dejavu that was stopped
       continue
     fi
@@ -192,11 +193,11 @@ finish() {
 }
 
 # Only names a package manager accepts: letters, digits and . _ + @ : / = ~ -
-# No spaces, no options (a leading -), nothing the shell could run.
+# No spaces, no options (a leading -, also after system: or npm:), nothing the shell could run.
 # Usage: check_name NAME [WHERE]
 check_name() {
   case "$1" in
-    "" | -* | *[!A-Za-z0-9._+@:/=~-]*) fail "Not a package name${2:+ ($2)}: '$1'. Use one name per argument, like: dejavu install ripgrep" ;;
+    "" | -* | *:-* | *[!A-Za-z0-9._+@:/=~-]*) fail "Not a package name${2:+ ($2)}: '$1'. Use one name per argument, like: dejavu install ripgrep" ;;
   esac
 }
 
@@ -208,12 +209,12 @@ base() {
   esac
 }
 
-# Download a URL to stdout, with curl or wget.
+# Download a URL to stdout, with curl or wget. Give up on a server that does not answer.
 fetch() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --retry 3 "$1"
+    curl -fsSL --retry 3 --connect-timeout 20 --max-time 600 "$1"
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "$1"
+    wget -qO- -T 20 "$1"
   else
     return 1
   fi
@@ -360,6 +361,13 @@ system() {
   say "$1 $2 with $PM..."
   if pm "$1" "$2"; then
     MSG="$2 (with $PM)"
+    [ "$1" = remove ] || return 0
+    # apk del says ok, but keeps a package that other packages need.
+    if [ "$PM" = apk ] && apk info -e "$2" >/dev/null 2>&1; then
+      MSG="other installed packages need $2, so $PM kept it. Ask the user before removing more."
+      return 1
+    fi
+    MSG="removed $MSG"
     return 0
   else
     rc=$?
@@ -684,6 +692,13 @@ install_one() {
       if mise_install "$spec"; then report 0; else report $?; fi
       return
       ;;
+    # Servers: mise has them too, but as a copy only this user can start, not a service
+    # that starts with the computer. Use the system package manager first, mise if it has none.
+    redis | postgres | mysql | mongodb | elasticsearch | clickhouse | minio | neo4j)
+      if system install "$spec"; then report 0 && return; else rc=$?; fi
+      [ "$rc" != 3 ] || { report 3; return; }
+      say "$MSG Trying mise instead..."
+      ;;
   esac
   if ! in_registry "$(base "$spec")"; then
     if system install "$spec"; then report 0; else report $?; fi
@@ -738,12 +753,7 @@ remove_one() {
       return
       ;;
   esac
-  if system remove "$spec"; then
-    MSG="removed $MSG"
-    report 0
-  else
-    report $?
-  fi
+  if system remove "$spec"; then report 0; else report $?; fi
 }
 
 upgrade_one() {

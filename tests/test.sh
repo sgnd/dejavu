@@ -54,6 +54,8 @@ echo "=== $PRETTY_NAME ($(uname -m))"
 # --- Wrong usage ---
 expect 2 sh "$SRC/dejavu" install 'rg;ls'
 expect 2 sh "$SRC/dejavu" install -y
+expect 2 sh "$SRC/dejavu" install system:-oAPT::Get::Assume-Yes=true # an option after the source
+expect 2 sh "$SRC/dejavu" install npm:--registry=http://example.com
 expect 2 sh "$SRC/dejavu" frobnicate
 expect 0 sh "$SRC/dejavu" help
 
@@ -85,6 +87,18 @@ dejavu install fd >/tmp/a.out 2>&1 &
 dejavu install bat >/tmp/b.out 2>&1 &
 wait
 expect 0 sh -lc 'fd --version && bat --version'
+# A lock left by a stopped dejavu whose number is now ours (like in a new container): no waiting.
+# shellcheck disable=SC2016 # expands in the new shell
+expect 0 sh -c 'mkdir -p "$HOME/.local/state/dejavu/lock" && echo $$ >"$HOME/.local/state/dejavu/lock/pid" && exec dejavu install jq'
+
+# A server comes from the system package manager, as a service.
+case "$ID" in
+  debian | ubuntu | alpine)
+    expect 0 dejavu install redis
+    if [ "$ID" = alpine ]; then has "redis (with apk)"; else has "redis (with apt-get)"; fi
+    expect 0 dejavu remove redis
+    ;;
+esac
 
 # --- Other commands ---
 expect 0 dejavu list
@@ -126,7 +140,13 @@ expect 1 dejavu remove no-such-tool-zz9
 expect 0 dejavu remove jq
 expect 0 dejavu remove system:tree
 case "$ID" in
-  alpine | macos) ;; # apk and brew keep a package other packages need: nothing to test
+  macos) ;; # brew refuses itself: nothing to test
+  alpine)
+    # apk del says ok but keeps a package that apk itself needs: dejavu must say it failed.
+    expect 1 dejavu remove system:libcrypto3
+    has "kept it"
+    expect 0 apk info -e libcrypto3
+    ;;
   *)
     # Other packages need coreutils: dejavu must refuse, and coreutils must stay.
     expect 1 dejavu remove system:coreutils

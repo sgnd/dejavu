@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- A name cannot be an option after its source either (`system:-o...`), so it never changes how the package manager runs.
+- `remove` on Alpine says when `apk` keeps a package that others need, instead of "ok".
+- `redis`, `postgres`, `mysql` and other servers come from the system package manager first, as a service.
+- A lock left by a stopped dejavu in a container no longer makes the next one wait 30 minutes.
+- Downloads give up on a server that does not answer.
+
 ## 0.1.0
 
 The first version.

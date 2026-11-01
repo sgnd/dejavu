@@ -155,6 +155,7 @@ For AI agents, developers and the curious. The full guide for agents is [`skills
 | You write | dejavu uses |
 | --- | --- |
 | `ripgrep`, `gh`, `ffmpeg`, `node@lts`, `python@3.13` | mise, when its [registry](https://mise.jdx.dev/registry.html) knows the name. Else the system package manager. |
+| `redis`, `postgres`, `mysql`, `mongodb`, `elasticsearch`, `clickhouse`, `minio`, `neo4j` | The system package manager first, so they run as a service. mise only when the system has no such package. |
 | `npm:prettier`, `pypi:black`, `github:owner/repo`, `cargo:NAME`, `go:MODULE` | mise, from that source. dejavu first installs what it needs (node, uv, rust or go). |
 | `system:nginx`, `system:build-essential` | Always the system package manager. For servers and services, libraries, build tools, and anything every user on the computer needs. |
 

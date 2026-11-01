@@ -37,6 +37,7 @@ dejavu install system:build-essential # a system package (often needs admin righ
 - **Find the name first** when you are not sure: `dejavu search WORD`. Then use a name from the list exactly as it is shown. Never guess package names for `npm:`, `pypi:`, `cargo:` or `github:`. Attackers publish packages under names that AI agents make up. Use a name from the search, the tool's official docs, or the user.
 - **Which kind of name:**
   - A plain name (`ripgrep`, `gh`, `node`) uses mise when its registry knows the tool, else the system package manager.
+  - Servers with a plain name (`redis`, `postgres`, `mysql`, `mongodb`) use the system package manager first, so they run as a service.
   - `npm:NAME`, `pypi:NAME`, `github:OWNER/REPO`, `cargo:NAME`, `go:MODULE` install from that source through mise.
   - dejavu adds the helper a tool needs (node, uv, rust or go), also for plain names that come from such a source (like `prettier`, from npm).
   - `system:NAME` always uses the system package manager. Use it for servers and services (`system:nginx`, `system:postgresql`), libraries and build tools (`system:libpq-dev`, `system:build-essential`), and anything other users or system services must also find.
