@@ -122,7 +122,7 @@ if [ "$ID" != macos ] && command -v su >/dev/null 2>&1; then
     echo 'dave ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/dave
     expect 3 su carol -s /bin/sh -c "sh $SRC/dejavu install system:htop"
     has "sudo "
-    expect 0 su dave -s /bin/sh -c "sh $SRC/dejavu install system:htop"
+    expect 0 su dave -s /bin/sh -c "sh $SRC/dejavu install system:file" # in every base repo (htop is not, on Rocky)
     expect 0 su dave -s /bin/sh -c "sh $SRC/dejavu doctor"
     has "admin rights: yes (sudo without a password)"
   fi
