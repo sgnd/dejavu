@@ -1,0 +1,44 @@
+# Every version is a GitHub release: push a tag like v0.3.0, and this runs every test,
+# then publishes the release. `setup` and `dejavu upgrade` download the newest release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. The same tests as every push: nothing untested reaches the users.
+  test:
+    uses: ./.github/workflows/test.yml
+
+  # 2. The release, with the two files that setup and upgrade download.
+  release:
+    name: Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to publish the release
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the version, and write the release notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          [ "$(sed -n 's/^VERSION=//p' dejavu)" = "$v" ] || { echo "::error::VERSION in dejavu is not $v"; exit 1; }
+          awk -v h="## $v" '$0 == h { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md | sed '/./,$!d' >notes.md
+          [ -s notes.md ] || { echo "::error::CHANGELOG.md has no section ## $v"; exit 1; }
+          cat >>notes.md <<'EOF'
+          Already have dejavu? Update it with: `dejavu upgrade`
+
+          Start:
+
+          ```sh
+          curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/dejavu | sh -s -- setup
+          ```
+          EOF
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dejavu skills/dejavu/SKILL.md --title "dejavu ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag --latest

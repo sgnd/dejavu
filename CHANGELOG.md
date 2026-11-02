@@ -1,5 +1,11 @@
 # Changelog
 
+Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). Setup and `dejavu upgrade` download the newest one.
+
+## 0.3.0
+
+- Setup and `dejavu upgrade` download the newest release, never `main`. A release only comes out after every test passed. (Forks: set `DEJAVU_DOWNLOAD_URL`, which replaces `DEJAVU_RAW_URL`.)
+
 ## 0.2.0
 
 - Agent skills: `dejavu install skill:OWNER/REPO@NAME` installs a skill from [skills.sh](https://skills.sh) for your AI agents, with the skills CLI. `search skill:WORD`, `upgrade`, `remove`, your list and `restore` work for skills too.

@@ -38,10 +38,10 @@ Ask your AI agent:
 Or paste this into a [terminal](#words-used-here) yourself:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgnd/dejavu/main/dejavu | sh -s -- setup
+curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/dejavu | sh -s -- setup
 ```
 
-This runs a script from the internet. It is plain text, so you (or your agent) can [read `dejavu`](dejavu) first.
+This runs a script from the internet: the newest [release](https://github.com/sgnd/dejavu/releases), a version that passed every test. It is plain text, so you (or your agent) can [read `dejavu`](dejavu) first.
 
 Then open a new terminal, or restart your AI agent. You can run setup again at any time: it never changes anything twice.
 

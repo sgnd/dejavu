@@ -28,6 +28,19 @@ A change fits when all of these are true:
 
 3. Open the pull request. [GitHub](.github/workflows/test.yml) runs the same test on Debian, Ubuntu, Fedora, Rocky Linux, Alpine, openSUSE, Arch and macOS. It also runs every Monday, because mise and the package managers change without us.
 
+## Release a version
+
+Every version is a GitHub release, and users only ever get releases. `main` can be ahead of them.
+
+1. Set `VERSION=` in `dejavu`, and add a `## X.Y.Z` section to `CHANGELOG.md` with what changed.
+2. Commit, then push the tag:
+
+   ```bash
+   git tag vX.Y.Z && git push origin main vX.Y.Z
+   ```
+
+3. [Release](.github/workflows/release.yml) runs every test again, checks that the version and the changelog match the tag, and publishes the release with `dejavu` and `SKILL.md`. If a test fails, nothing is published: fix it, delete the tag (`git push origin :vX.Y.Z`) and tag again.
+
 ## Writing
 
 Keep the words simple and the lines short, like the rest of the repo. Many readers have never used a terminal. Explain a new word in [Words used here](README.md#words-used-here).

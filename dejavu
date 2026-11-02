@@ -11,7 +11,7 @@
 #     Homebrew) for the rest: system packages, servers and libraries.
 #
 # Start with:
-#   curl -fsSL https://raw.githubusercontent.com/sgnd/dejavu/main/dejavu | sh -s -- setup
+#   curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/dejavu | sh -s -- setup
 # Then:
 #   dejavu help
 #
@@ -20,9 +20,10 @@
 set -eu
 set -f # no wildcards: package names never need them
 
-VERSION=0.2.0
-# Forked this repo? Put your fork's address here, so `setup` and `upgrade` download your copy.
-RAW_URL="${DEJAVU_RAW_URL:-https://raw.githubusercontent.com/sgnd/dejavu/main}"
+VERSION=0.3.0
+# `setup` and `upgrade` download the newest release (dejavu and SKILL.md), never `main`: only tested versions.
+# Forked this repo? Put your fork's address here, so they download your releases.
+DOWNLOAD_URL="${DEJAVU_DOWNLOAD_URL:-https://github.com/sgnd/dejavu/releases/latest/download}"
 MARKER="# added by dejavu"
 
 say() { printf '==> %s\n' "$*"; }
@@ -949,8 +950,8 @@ install_self() {
   if [ "${1:-}" != download ] && [ -n "$SELF" ] && grep -q '^# dejavu: one package manager' "$SELF" 2>/dev/null; then
     [ "$SELF" -ef "$BIN_DIR/dejavu" ] && { MSG="dejavu is in $BIN_DIR"; return 0; }
     cp "$SELF" "$TMP/dejavu"
-  elif ! fetch "$RAW_URL/dejavu" >"$TMP/dejavu" 2>"$TMP/fail"; then
-    MSG="could not download dejavu from $RAW_URL"
+  elif ! fetch "$DOWNLOAD_URL/dejavu" >"$TMP/dejavu" 2>"$TMP/fail"; then
+    MSG="could not download dejavu from $DOWNLOAD_URL"
     return 1
   fi
   # Never install half a download.
@@ -969,8 +970,8 @@ install_skill() {
   here="$(dirname "${SELF:-/nonexistent/x}")/skills/dejavu/SKILL.md"
   if [ -f "$here" ]; then
     cp "$here" "$TMP/SKILL.md"
-  elif ! fetch "$RAW_URL/skills/dejavu/SKILL.md" >"$TMP/SKILL.md" 2>"$TMP/fail" || ! grep -q '^name: dejavu' "$TMP/SKILL.md"; then
-    MSG="could not download the agent skill from $RAW_URL"
+  elif ! fetch "$DOWNLOAD_URL/SKILL.md" >"$TMP/SKILL.md" 2>"$TMP/fail" || ! grep -q '^name: dejavu' "$TMP/SKILL.md"; then
+    MSG="could not download the agent skill from $DOWNLOAD_URL"
     return 1
   fi
   done_in=""

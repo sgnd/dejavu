@@ -9,8 +9,12 @@
 set -u
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-# `upgrade` downloads dejavu. Download it from this folder instead of GitHub (curl reads file://).
-export DEJAVU_RAW_URL="file://$SRC"
+# `upgrade` downloads dejavu and SKILL.md from the newest release. Download them from a folder
+# laid out like a release instead (curl reads file://).
+REL="$(mktemp -d)"
+cp "$SRC/dejavu" "$SRC/skills/dejavu/SKILL.md" "$REL/"
+chmod 755 "$REL"
+export DEJAVU_DOWNLOAD_URL="file://$REL"
 PATH="$HOME/.local/bin:$PATH"
 
 passed=0
@@ -200,7 +204,7 @@ esac
 # --- A user without sudo ---
 if [ "$ID" != macos ] && command -v su >/dev/null 2>&1; then
   useradd -m bob 2>/dev/null || adduser -D bob 2>/dev/null
-  as_bob() { su bob -s /bin/sh -c "PATH=\$HOME/.local/bin:\$PATH DEJAVU_RAW_URL=$DEJAVU_RAW_URL $*"; }
+  as_bob() { su bob -s /bin/sh -c "PATH=\$HOME/.local/bin:\$PATH DEJAVU_DOWNLOAD_URL=$DEJAVU_DOWNLOAD_URL $*"; }
   expect 0 as_bob "sh $SRC/dejavu setup"
   expect 0 as_bob "dejavu install jq"
   expect 3 as_bob "dejavu install system:htop"

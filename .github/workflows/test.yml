@@ -9,6 +9,7 @@ on:
   schedule:
     - cron: "0 3 * * 1" # every Monday at 03:00 UTC
   workflow_dispatch: # adds a "Run workflow" button on GitHub
+  workflow_call: # release.yml runs these tests before every release
 
 permissions:
   contents: read

@@ -18,7 +18,7 @@ command -v dejavu || ls ~/.local/bin/dejavu
 If it is missing, set it up (no admin rights needed):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgnd/dejavu/main/dejavu | sh -s -- setup
+curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/dejavu | sh -s -- setup
 ```
 
 Without curl, use `wget -qO- URL | sh -s -- setup`. Your shell may not find new commands until it restarts, so call it by its full path: `~/.local/bin/dejavu`.

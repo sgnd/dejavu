@@ -28,4 +28,4 @@ A security problem in a tool that dejavu installs, in mise, or in a system packa
 
 ## Supported versions
 
-Only the newest release and `main` get fixes. The install command always uses `main`.
+Only the newest release gets fixes. Setup and `dejavu upgrade` always download the newest release, never `main`.
