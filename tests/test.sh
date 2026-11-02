@@ -122,7 +122,10 @@ expect 1 dejavu remove skill:vercel-labs/agent-skills/web-design-guidelines # no
 has "not installed"
 mkdir -p "$HOME/.claude" # an AI agent
 # The skills CLI needs Node.js 22.20 or newer. Slim images miss the library that mise's node needs.
-case "$ID" in debian | ubuntu) expect 0 dejavu install system:libatomic1 ;; esac
+case "$ID" in
+  debian | ubuntu) expect 0 dejavu install system:libatomic1 ;;
+  rocky | fedora) expect 0 dejavu install system:libatomic ;;
+esac
 # Alpine: mise's node does not run there, and apk's node can be too old.
 if [ "$ID" != alpine ]; then
   expect 0 dejavu install skill:vercel-labs/agent-skills@web-design-guidelines # installs the skills CLI first
