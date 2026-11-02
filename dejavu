@@ -127,7 +127,19 @@ start() {
 # The keyboard is not connected, so nothing can wait for an answer.
 run() {
   printf '\n$ %s\n' "$*" >>"$LOG"
+  # A big install is quiet for minutes. Say now and then that it still works, so nobody stops it.
+  # It stops by itself when dejavu stops. Its sleep must not keep the output open.
+  (
+    s=0
+    while sleep 30 >/dev/null 2>&1 && kill -0 $$ 2>/dev/null; do
+      s=$((s + 30))
+      say "Still working ($((s / 60)) min $((s % 60)) s). Big installs take a while. Don't stop it."
+    done
+  ) &
+  beat=$!
   if "$@" </dev/null >"$TMP/out" 2>&1; then rc=0; else rc=$?; fi
+  kill "$beat" 2>/dev/null || true
+  wait "$beat" 2>/dev/null || true
   grep -v -e '░' -e '████' "$TMP/out" >"$TMP/step" || true # without mise's progress bars
   cat "$TMP/step" >>"$LOG"
   [ "$rc" = 0 ] || cp "$TMP/step" "$TMP/fail"
@@ -172,6 +184,7 @@ hint() {
     echo "    hint: No permission to write a file. If you run in a sandbox, ask the user to let this command run outside it."
   elif grep -qiE 'unable to locate package|no match for argument|target not found|not found in package names|no provider of|no available formula|unable to select packages|not found in registry|no packages found|404' "$f"; then
     echo "    hint: This name or version was not found. Find the right name with: dejavu search WORD"
+    echo "    dejavu installs command-line tools. An app with windows (a browser, an editor like VS Code) is not one: the user installs it from the app store or the maker's website."
   fi
 }
 
@@ -652,8 +665,13 @@ restore() {
   fi
   say "Installing the $count packages in $src. This can take a while. Don't stop it halfway."
   # A for loop, not `while read`: an install must not read the next names as its input.
+  i=0
   # shellcheck disable=SC2013 # names have no spaces
-  for n in $(cat "$TMP/names"); do install_and_record "$n"; done
+  for n in $(cat "$TMP/names"); do
+    i=$((i + 1))
+    say "Package $i of $count: $n"
+    install_and_record "$n"
+  done
 }
 
 install_and_record() {

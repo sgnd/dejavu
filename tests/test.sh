@@ -67,10 +67,15 @@ expect 0 sh "$SRC/dejavu" setup # again: changes nothing
 # --- Install ---
 expect 0 dejavu install ripgrep jq
 expect 0 dejavu install ripgrep # again
+# A quick step must stay quick: the "Still working" helper never makes it wait.
+start_s=$(date +%s)
+expect 0 dejavu install ripgrep
+[ $(($(date +%s) - start_s)) -lt 20 ] || { failed=$((failed + 1)) && echo "FAIL: a quick install took $(($(date +%s) - start_s)) s"; }
 # A new login shell finds the commands by name.
 expect 0 sh -lc 'rg --version && jq --version'
 expect 1 dejavu install no-such-tool-zz9
 has "failed:"
+has "app with windows"
 expect 1 dejavu install ripgrep@99.99.99
 expect 0 dejavu install system:tree
 expect 0 sh -lc 'tree --version'
@@ -127,6 +132,7 @@ cr="$(printf '\r')"
 sed "s/\$/$cr/" "$LIST" >/tmp/old-list.txt
 expect 0 dejavu remove jq
 expect 0 sh -c 'cd /tmp && dejavu restore old-list.txt'
+has "Package 1 of"
 expect 0 sh -lc 'jq --version'
 printf 'jq\nnot;a;name\n' >/tmp/bad-list.txt
 expect 2 dejavu restore /tmp/bad-list.txt

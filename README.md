@@ -68,6 +68,17 @@ Each tool gets one line back:
 - `failed:` it did not work. Below it: the error, a hint in plain words, and where the full log is.
 - `needs the user:` only you can do this, usually type your password. The line has the exact command to run in your terminal.
 
+Big installs can be quiet for minutes. dejavu says "Still working" every 30 seconds. Let it finish: stopping halfway can break things.
+
+**When dejavu needs your password:** some packages change the whole computer, so they need [admin rights](#words-used-here). dejavu never types your password, so it stops and gives you one command that starts with `sudo`. To run it:
+
+1. Open a [terminal](#words-used-here) (on a Mac: the Terminal app).
+2. Paste the command and press Enter.
+3. Type your computer's password (the one you log in with) and press Enter. You see nothing while you type, not even dots. That is normal.
+4. When it is done, tell your agent. It runs dejavu again to finish.
+
+dejavu installs command-line tools, not apps with windows. Install a browser or an editor like VS Code from your app store or the maker's website.
+
 ## Move to a new computer
 
 dejavu writes down everything it installs, with the version, in one small text file: your list. `dejavu list` shows it, and where it is (`~/.config/dejavu/packages.txt`).
