@@ -56,6 +56,11 @@ expect 2 sh "$SRC/dejavu" install 'rg;ls'
 expect 2 sh "$SRC/dejavu" install -y
 expect 2 sh "$SRC/dejavu" install system:-oAPT::Get::Assume-Yes=true # an option after the source
 expect 2 sh "$SRC/dejavu" install npm:--registry=http://example.com
+# Files and URLs: the package manager would install them as root, without its repositories.
+expect 2 sh "$SRC/dejavu" install /tmp/x.deb
+expect 2 sh "$SRC/dejavu" install system:./x.deb
+expect 2 sh "$SRC/dejavu" install system:https://example.com/x.rpm
+expect 2 sh "$SRC/dejavu" install x.apk
 expect 2 sh "$SRC/dejavu" frobnicate
 expect 0 sh "$SRC/dejavu" help
 
@@ -174,6 +179,9 @@ expect 1 dejavu remove no-such-tool-zz9
 # --- Remove ---
 expect 0 dejavu remove jq
 expect 0 dejavu remove system:tree
+# Not on the list: dejavu did not install it, so it stays.
+expect 1 dejavu remove coreutils
+has "not on your list"
 case "$ID" in
   macos) ;; # brew refuses itself: nothing to test
   alpine)

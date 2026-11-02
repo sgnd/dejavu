@@ -96,7 +96,7 @@ dejavu restore                       # repair: install what is missing from the 
 dejavu list               # the user's list: everything installed with dejavu, with versions
 dejavu upgrade            # every mise tool, mise and dejavu (not system packages)
 dejavu upgrade jq         # one tool; system:NAME for a system package
-dejavu remove jq          # ask the user first
+dejavu remove jq          # ask the user first. Only removes what is on the list
 dejavu doctor             # the machine: OS, admin rights, package manager, internet, PATH
 ```
 
@@ -107,6 +107,8 @@ Run `dejavu doctor` first when something looks wrong, or before a big install on
 - Use dejavu, not `sudo apt-get`, `brew`, `npm -g`, `pip install` or `curl | sh` installers. It already picks the right one for this machine.
 - Never run dejavu with `sudo`. It asks for admin rights itself, and stops with "needs the user" when only a password helps.
 - Ask the user before you remove anything, and before you install system packages on a server that runs services.
+- `dejavu remove NAME` only removes what is on the user's list. When it says a tool is not on the list, the user (or another setup) installed it: ask before you use `dejavu remove system:NAME`.
+- Install by name only. dejavu refuses files and URLs (`/tmp/x.deb`, `https://.../x.rpm`): find the package's name with `dejavu search`.
 - Run the same command again after you fix a failure. dejavu skips what is already there.
 - After the user ran a `sudo` command that dejavu gave them, run the same dejavu command again: it is quick, and it puts the package on their list.
 - Two dejavu commands at once wait for each other. That is normal.

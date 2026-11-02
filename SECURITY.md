@@ -20,9 +20,10 @@ A security problem in a tool that dejavu installs, in mise, or in a system packa
 
 ## How dejavu keeps you safe
 
-- It accepts only plain package names, never shell code or options.
-- mise checks every download with a checksum, and a signature where the tool has one.
+- It accepts only plain package names, never shell code, options, files or URLs.
+- mise checks downloads with a checksum, and a signature, where the tool's source has one. Tools from npm, PyPI, cargo or go come from those registries as they are.
 - It never asks for, stores or types your password. When a password is needed, it tells you the command to run yourself.
+- It removes only what it installed (what is on your list), unless you name a system package with `system:NAME`.
 - It refuses to remove a system package that other packages need.
 
 ## Supported versions

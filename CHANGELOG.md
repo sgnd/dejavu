@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Agent skills: `dejavu install skill:OWNER/REPO@NAME` installs a skill from [skills.sh](https://skills.sh) for your AI agents, with the skills CLI. `search skill:WORD`, `upgrade`, `remove`, your list and `restore` work for skills too.
-
+- A name cannot be a file or a URL (`/tmp/x.deb`, `system:https://.../x.rpm`, `x.apk`). The package manager would install it as root, without its repositories.
+- `dejavu remove NAME` only removes what is on your list. A tool that you or another setup (like brework) installed stays. `dejavu remove system:NAME` still removes a system package.
 - A name cannot be an option after its source either (`system:-o...`), so it never changes how the package manager runs.
 - `remove` on Alpine says when `apk` keeps a package that others need, instead of "ok".
 - `redis`, `postgres`, `mysql` and other servers come from the system package manager first, as a service.

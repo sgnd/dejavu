@@ -141,14 +141,15 @@ You can edit it. To keep a tool off the list, use `dejavu remove`.
 - `~/.local/share/mise`: the tools that mise installs
 - `~/.config/dejavu/packages.txt`: your list. Everything installed with dejavu, with the version. Keep a copy: it is all you need to [move to a new computer](#move-to-a-new-computer).
 - `~/.config/mise/config.toml`: the list of your mise tools. It is your file, you can edit it.
-- One line at the end of your shell settings (`~/.profile`, and `~/.bashrc`, `~/.zprofile` or `~/.zshrc` if you use them), so new terminals find the tools. It ends with `# added by dejavu`.
+- One line at the end of your shell settings (`~/.profile`, and `~/.bashrc`, `~/.zprofile` or `~/.zshrc` if you use them), so new terminals find the tools. It ends with `# added by dejavu`. If you use fish: `~/.config/fish/conf.d/dejavu.fish`.
+- Only when a tool needs them: the helpers it runs with (node, uv, rust or go, with mise), and system packages that dejavu itself needs (curl, tar, gawk, ca-certificates, git, or nodejs on Alpine).
 - `skills/dejavu/SKILL.md` in the folder of each AI agent it finds (Claude Code, Codex, Gemini CLI): the instructions that teach your agent to use dejavu.
 - Only when you install an agent skill: the skill in `~/.agents/skills` and your agents' `skills` folders, and the skills CLI's list of them, `~/.agents/.skill-lock.json`.
 - Logs in `~/.local/state/dejavu`, deleted after a week.
 
 `~` is your home folder. dejavu never asks for, stores or types your password. It never upgrades all your system packages at once, because that can restart services on a server.
 
-Your Mac was set up with [brework](https://github.com/sgnd/brework)? dejavu uses brework's mise, and changes nothing that brework set up.
+Your Mac was set up with [brework](https://github.com/sgnd/brework)? dejavu uses brework's mise and Homebrew. `dejavu remove` only removes what dejavu installed (what is on your list), so the tools brework set up stay. To remove a system package that is not on your list, write `dejavu remove system:NAME`.
 
 ## Something went wrong
 
@@ -171,7 +172,7 @@ Still stuck? [Open an issue](https://github.com/sgnd/dejavu/issues/new?template=
 
 1. Remove the tools you no longer need: `dejavu list`, then `dejavu remove NAME`.
 2. Delete dejavu and its logs: `rm -rf ~/.local/bin/dejavu ~/.local/state/dejavu`. Keep `~/.config/dejavu/packages.txt` if you may want your tools back later.
-3. Delete the line that ends with `# added by dejavu` from your shell settings, and the `skills/dejavu` folder of your AI agents.
+3. Delete the line that ends with `# added by dejavu` from your shell settings (and `~/.config/fish/conf.d/dejavu.fish` if you use fish), and the `skills/dejavu` folder of your AI agents.
 4. To also remove mise and all its tools: `mise implode`. Only do this if dejavu installed mise. (On a brework Mac, mise belongs to brework.)
 
 ## Details

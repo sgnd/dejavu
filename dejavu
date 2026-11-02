@@ -20,7 +20,7 @@
 set -eu
 set -f # no wildcards: package names never need them
 
-VERSION=0.1.0
+VERSION=0.2.0
 # Forked this repo? Put your fork's address here, so `setup` and `upgrade` download your copy.
 RAW_URL="${DEJAVU_RAW_URL:-https://raw.githubusercontent.com/sgnd/dejavu/main}"
 MARKER="# added by dejavu"
@@ -215,10 +215,13 @@ finish() {
 
 # Only names a package manager accepts: letters, digits and . _ + @ : / = ~ -
 # No spaces, no options (a leading -, also after system: or npm:), nothing the shell could run.
+# No files or URLs either: apt-get, dnf, zypper and apk install those as they are, as root,
+# without their repositories (/tmp/x.deb, system:https://.../x.rpm, x.apk).
 # Usage: check_name NAME [WHERE]
 check_name() {
   case "$1" in
     "" | -* | *:-* | *[!A-Za-z0-9._+@:/=~-]*) fail "Not a package name${2:+ ($2)}: '$1'. Use one name per argument, like: dejavu install ripgrep" ;;
+    [/.~]* | *:[/.~]* | *://* | *.deb | *.rpm | *.apk) fail "Not a package name${2:+ ($2)}: '$1'. dejavu installs packages by name, never a file or a URL. Find the name with: dejavu search WORD" ;;
   esac
 }
 
@@ -861,6 +864,13 @@ remove_one() {
       return
       ;;
   esac
+  # Only what dejavu installed. A tool from the user, or from another setup (like brework), stays.
+  list_without "$(base "$spec")" >/dev/null
+  if [ -z "$FOUND" ]; then
+    MSG="$spec is not on your list: dejavu did not install it, so it did not remove it. Ask the user first. To remove a system package anyway: dejavu remove system:$(base "$spec")"
+    report 1
+    return
+  fi
   if in_mise "$(base "$spec")"; then
     say "Removing $spec with mise..."
     if run "$MISE" unuse --global "$(base "$spec")"; then
@@ -1089,6 +1099,8 @@ main() {
       for n in "$@"; do
         remove_one "$n"
         # Off the list when it is gone, or was never installed here (like after a restore that failed).
+        list_without "$(base "$spec")" >/dev/null
+        [ -n "$FOUND" ] || continue
         if [ "$LAST" = 0 ]; then
           forget "$spec"
         else
