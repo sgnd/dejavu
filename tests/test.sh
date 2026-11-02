@@ -115,6 +115,32 @@ has "admin rights: yes"
 command -v curl >/dev/null 2>&1 || expect 0 dejavu install system:curl
 expect 0 dejavu upgrade
 
+# --- Agent skills ---
+expect 2 dejavu install skill:owner
+expect 2 dejavu install skill:a/b/--global
+expect 1 dejavu remove skill:vercel-labs/agent-skills/web-design-guidelines # not installed
+has "not installed"
+mkdir -p "$HOME/.claude" # an AI agent
+# The skills CLI needs Node.js 22.20 or newer. Slim images miss the library that mise's node needs.
+case "$ID" in debian | ubuntu) expect 0 dejavu install system:libatomic1 ;; esac
+# Alpine: mise's node does not run there, and apk's node can be too old.
+if [ "$ID" != alpine ]; then
+  expect 0 dejavu install skill:vercel-labs/agent-skills@web-design-guidelines # installs the skills CLI first
+  expect 0 test -f "$HOME/.claude/skills/web-design-guidelines/SKILL.md"
+  expect 0 dejavu list
+  has "skill:vercel-labs/agent-skills/web-design-guidelines  # "
+  expect 1 dejavu install skill:vercel-labs/agent-skills/no-such-skill-zz9
+  has "skill was not found"
+  expect 1 dejavu install skill:vercel-labs/agent-skills # no NAME: the list of skills
+  has "web-design-guidelines"
+  expect 0 dejavu search skill:pdf
+  has "@"
+  expect 0 dejavu upgrade skill:vercel-labs/agent-skills/web-design-guidelines
+  expect 0 dejavu remove skill:vercel-labs/agent-skills/web-design-guidelines
+  expect 1 test -e "$HOME/.claude/skills/web-design-guidelines"
+  ! grep -q web-design "$HOME/.config/dejavu/packages.txt" || { failed=$((failed + 1)) && echo "FAIL: the skill is still in the list"; }
+fi
+
 # --- Your list, and moving to another computer ---
 LIST="$HOME/.config/dejavu/packages.txt"
 expect 0 dejavu list

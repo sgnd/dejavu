@@ -48,6 +48,8 @@ NAME:
                                    A package from that source, through mise
   system:nginx, system:build-essential
                                    A package from the system package manager
+  skill:OWNER/REPO/NAME            An agent skill for your AI agents, from skills.sh
+                                   (find one with: dejavu search skill:WORD)
   Any other name goes to the system package manager.
 
 Result lines start with "ok:", "failed:" or "needs the user:".
@@ -140,7 +142,8 @@ run() {
   if "$@" </dev/null >"$TMP/out" 2>&1; then rc=0; else rc=$?; fi
   kill "$beat" 2>/dev/null || true
   wait "$beat" 2>/dev/null || true
-  grep -v -e '░' -e '████' "$TMP/out" >"$TMP/step" || true # without mise's progress bars
+  # Without progress bars and colors.
+  grep -v -e '░' -e '████' "$TMP/out" | sed "s/$(printf '\033')\[[0-9;?]*[A-Za-z]//g" >"$TMP/step" || true
   cat "$TMP/step" >>"$LOG"
   [ "$rc" = 0 ] || cp "$TMP/step" "$TMP/fail"
   return "$rc"
@@ -182,6 +185,11 @@ hint() {
     echo "    hint: Another install is running on this machine. Wait for it to finish, then try again."
   elif grep -qiE 'permission denied|operation not permitted|read-only file system' "$f"; then
     echo "    hint: No permission to write a file. If you run in a sandbox, ask the user to let this command run outside it."
+  elif grep -qiE 'no matching skills|no skills found|no valid skills' "$f"; then
+    echo "    hint: This skill was not found. Find the right name with: dejavu search skill:WORD"
+  elif grep -qiE 'error while loading shared libraries' "$f"; then
+    lib="$(sed -n 's/.*error while loading shared libraries: \([^:]*\):.*/\1/p' "$f" | head -n 1)"
+    echo "    hint: The system library $lib is missing. Find its package with: dejavu search ${lib%%.so*}. Install it with: dejavu install system:NAME. Then try again."
   elif grep -qiE 'unable to locate package|no match for argument|target not found|not found in package names|no provider of|no available formula|unable to select packages|not found in registry|no packages found|404' "$f"; then
     echo "    hint: This name or version was not found. Find the right name with: dejavu search WORD"
     echo "    dejavu installs command-line tools. An app with windows (a browser, an editor like VS Code) is not one: the user installs it from the app store or the maker's website."
@@ -530,6 +538,90 @@ mise_install() {
   return 0
 }
 
+# --- Agent skills --------------------------------------------------------------
+# Instructions that teach AI agents a task. The skills CLI (https://skills.sh, npm:skills)
+# installs them for the agents it finds. dejavu installs it with mise when needed.
+
+# The folders of the AI agents on this machine, one per line.
+agent_dirs() {
+  for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" "${CODEX_HOME:-$HOME/.codex}" "$HOME/.gemini" "$HOME/.config/agents" "$HOME/.agents"; do
+    [ ! -d "$d" ] || printf '%s\n' "$d"
+  done
+}
+
+# Run the skills CLI, without questions and without sending usage data.
+skills_run() {
+  ensure_mise || return 1
+  # It downloads skills with git.
+  if ! command -v git >/dev/null 2>&1; then
+    say "Installing git first, agent skills need it..."
+    system install git || { rc=$? && MSG="agent skills need git. $MSG" && return "$rc"; }
+  fi
+  if ! "$MISE" which skills >/dev/null 2>&1; then
+    say "Installing the skills CLI first, for agent skills..."
+    mise_install npm:skills || { MSG="could not install the skills CLI, which agent skills need. $MSG"; return 1; }
+  fi
+  # It needs Node.js 22.20 or newer. The system's node is often older (Debian 13: 20).
+  v="$("$MISE" exec -- node -p process.versions.node 2>/dev/null || true)"
+  if ! echo "$v" | awk -F. '{ exit !($1 > 22 || ($1 == 22 && $2 >= 20)) }'; then
+    say "Agent skills need Node.js 22.20 or newer${v:+, this is $v}. Installing node@lts with mise..."
+    mise_install node@lts || { MSG="agent skills need Node.js 22.20 or newer${v:+ (this machine has $v)}. $MSG"; return 1; }
+  fi
+  run env DISABLE_TELEMETRY=1 "$MISE" exec -- skills "$@" || { MSG="the skills CLI could not $1 it."; return 1; }
+}
+
+# The day a skill was installed or last updated, from the skills CLI's lock file. Empty if not installed.
+skill_date() {
+  lock="${XDG_STATE_HOME:+$XDG_STATE_HOME/skills/.skill-lock.json}"
+  awk -v want="$1" '
+    /^    "[^"]+": \{/ { k = $0; sub(/^    "/, "", k); sub(/".*/, "", k) }
+    /^      "updatedAt": "/ && tolower(k) == tolower(want) { d = $0; sub(/^[^:]*: "/, "", d); print substr(d, 1, 10) }
+  ' "${lock:-$HOME/.agents/.skill-lock.json}" 2>/dev/null | head -n 1
+}
+
+# Usage: skill ACTION skill:OWNER/REPO/NAME. Sets MSG. Returns 0 ok, 1 failed, 3 needs the user.
+skill() {
+  repo="${2#skill:}"
+  name="${repo#*/*/}"
+  [ "$name" != "$repo" ] || name=""
+  repo="${repo%"/$name"}"
+  case "/$repo/$name" in */-*) fail "Not a skill name: '$2'. Write it like this: skill:OWNER/REPO/NAME" ;; esac
+  case "$repo" in */*) ;; *) fail "Not a skill name: '$2'. Write it like this: skill:OWNER/REPO/NAME" ;; esac
+  if [ -z "$name" ]; then
+    [ "$1" = install ] || { MSG="which skill from $repo? Write it like this: skill:$repo/NAME"; return 1; }
+    # Show the skills in the repository: the agent picks one, with the user.
+    skills_run add "$repo" --list || return
+    cp "$TMP/step" "$TMP/fail"
+    MSG="which skill from $repo? The list is below. Install one by its name: dejavu install skill:$repo/NAME"
+    return 1
+  fi
+  if [ "$1" != install ] && [ -z "$(skill_date "$name")" ]; then
+    MSG="the skill $name is not installed with dejavu."
+    return 1
+  fi
+  case "$1" in
+    install)
+      if [ -z "$(agent_dirs)" ]; then
+        MSG="no AI agent found in $HOME, so there is nothing to add the skill $name to. Install an AI agent first."
+        return 1
+      fi
+      say "Installing the skill $name from $repo..."
+      skills_run add "$repo" --skill "$name" --global --yes || return
+      MSG="skill $name from $repo, for your AI agents. They see it in their next session."
+      ;;
+    remove)
+      say "Removing the skill $name..."
+      skills_run remove "$name" --global --yes || return
+      MSG="removed the skill $name"
+      ;;
+    upgrade)
+      say "Updating the skill $name..."
+      skills_run update "$name" --global --yes || return
+      MSG="the skill $name is up to date"
+      ;;
+  esac
+}
+
 # --- Your list ------------------------------------------------------------------
 # One file with everything installed with dejavu, so `dejavu restore` can install
 # it all again on another computer. One package per line, then a note: version, how.
@@ -541,6 +633,11 @@ version_of() {
   vkey="$(base "$1")"
   case "$vkey" in
     system:*) ;;
+    skill:*)
+      VER="$(skill_date "${vkey##*/}")"
+      [ -z "$VER" ] || VIA=skills
+      return 0
+      ;;
     *)
       if in_mise "$vkey"; then
         VIA=mise
@@ -692,8 +789,11 @@ report() { # Usage: report STATUS (from the last function). LAST keeps it.
 
 # Agents write "FFmpeg" or "Ripgrep". Plain names are lowercase in every package manager.
 # (Not github:Owner/Repo: there the case matters.)
+# skills.sh writes skills as OWNER/REPO@NAME: dejavu reads that as skill:OWNER/REPO/NAME.
 lower() {
   case "$1" in
+    skill:*/*/*) printf '%s\n' "${1%%@*}" ;; # skills have no versions to pick
+    skill:*@*) printf '%s\n' "$1" | sed 's|@|/|' ;;
     *:*) printf '%s\n' "$1" ;;
     *) printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' ;;
   esac
@@ -704,6 +804,10 @@ install_one() {
   case "$spec" in
     system:*)
       if system install "${spec#system:}"; then report 0; else report $?; fi
+      return
+      ;;
+    skill:*)
+      if skill install "$spec"; then report 0; else report $?; fi
       return
       ;;
     *:*)
@@ -752,6 +856,10 @@ remove_one() {
       if system remove "${spec#system:}"; then report 0; else report $?; fi
       return
       ;;
+    skill:*)
+      if skill remove "$spec"; then report 0; else report $?; fi
+      return
+      ;;
   esac
   if in_mise "$(base "$spec")"; then
     say "Removing $spec with mise..."
@@ -781,6 +889,10 @@ upgrade_one() {
       if system upgrade "${spec#system:}"; then report 0; else report $?; fi
       return
       ;;
+    skill:*)
+      if skill upgrade "$spec"; then report 0; else report $?; fi
+      return
+      ;;
   esac
   if in_mise "$(base "$spec")"; then
     say "Upgrading $spec with mise..."
@@ -803,6 +915,10 @@ upgrade_all() {
     # mise from mise.run updates itself. From Homebrew or apt, that package manager updates it.
     if [ "$MISE" = "$BIN_DIR/mise" ]; then
       if run "$MISE" self-update --yes; then MSG="mise is up to date"; report 0; else MSG="mise could not update itself."; report 1; fi
+    fi
+    if "$MISE" which skills >/dev/null 2>&1; then
+      say "Updating the agent skills..."
+      if skills_run update --global --yes; then MSG="agent skills are up to date"; report 0; else report 1; fi
     fi
   else
     report 1
@@ -848,8 +964,7 @@ install_skill() {
     return 1
   fi
   done_in=""
-  for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" "${CODEX_HOME:-$HOME/.codex}" "$HOME/.gemini" "$HOME/.config/agents" "$HOME/.agents"; do
-    [ -d "$d" ] || continue
+  for d in $(agent_dirs); do
     mkdir -p "$d/skills/dejavu" && cp "$TMP/SKILL.md" "$d/skills/dejavu/SKILL.md" && done_in="$done_in $d/skills"
   done
   if [ -n "$done_in" ]; then
@@ -996,6 +1111,14 @@ main() {
     search)
       [ $# = 1 ] || fail "Search for one word, for example: dejavu search grep"
       start
+      case "$1" in
+        skill:*)
+          skills_run find "${1#skill:}" || { report $? && finish; }
+          echo "Agent skills on skills.sh (install with: dejavu install skill:OWNER/REPO@NAME):"
+          grep -v -e 'npx skills' -e '^[[:space:]]*$' "$TMP/step" | head -n 30 | sed 's/^/  /'
+          exit 0
+          ;;
+      esac
       if ensure_mise; then
         echo "From mise (install with: dejavu install NAME):"
         "$MISE" search "${1#*:}" 2>/dev/null | head -n 15 | sed 's/^/  /'

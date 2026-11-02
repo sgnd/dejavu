@@ -58,6 +58,7 @@ dejavu list                  # your list: everything installed, with versions
 dejavu upgrade               # get the newest versions
 dejavu remove jq             # remove a tool
 dejavu restore FILE          # install everything from a list (see below)
+dejavu install skill:anthropics/skills@pdf   # an agent skill (see below)
 dejavu doctor                # check this computer when something is wrong
 dejavu help                  # all commands
 ```
@@ -78,6 +79,19 @@ Big installs can be quiet for minutes. dejavu says "Still working" every 30 seco
 4. When it is done, tell your agent. It runs dejavu again to finish.
 
 dejavu installs command-line tools, not apps with windows. Install a browser or an editor like VS Code from your app store or the maker's website.
+
+## Agent skills
+
+A [skill](#words-used-here) teaches your AI agent a new task, like filling in PDF forms. Ask your agent: "find a skill for PDFs". It searches [skills.sh](https://skills.sh), tells you what it found, and installs the one you pick:
+
+```bash
+dejavu search skill:pdf
+dejavu install skill:anthropics/skills@pdf
+```
+
+The skill is ready in your agent's next session. `dejavu upgrade` keeps your skills up to date, and they are on [your list](#move-to-a-new-computer) like everything else.
+
+A skill tells your agent what to do, so only install skills from people you trust. dejavu uses the [skills CLI](https://github.com/vercel-labs/skills) for this (it installs it, and Node.js and git, the first time). It turns off the CLI's usage statistics.
 
 ## Move to a new computer
 
@@ -118,6 +132,7 @@ You can edit it. To keep a tool off the list, use `dejavu remove`.
 - **AI agent**: an AI assistant that can run commands on your computer for you, like Claude Code, Codex or Gemini CLI.
 - **Package manager**: a program that downloads, installs, updates and removes other programs for you.
 - **Admin rights**: permission to change the whole computer, not just your own files. Commands with `sudo` in front use them, and ask for your password.
+- **Skill**: a folder of instructions that teaches an AI agent a task. Agents read it when the task comes up.
 - **PATH**: the list of folders where the terminal looks for commands. When a new tool is not in it, you get `command not found`.
 
 ## What it changes on your computer
@@ -128,6 +143,7 @@ You can edit it. To keep a tool off the list, use `dejavu remove`.
 - `~/.config/mise/config.toml`: the list of your mise tools. It is your file, you can edit it.
 - One line at the end of your shell settings (`~/.profile`, and `~/.bashrc`, `~/.zprofile` or `~/.zshrc` if you use them), so new terminals find the tools. It ends with `# added by dejavu`.
 - `skills/dejavu/SKILL.md` in the folder of each AI agent it finds (Claude Code, Codex, Gemini CLI): the instructions that teach your agent to use dejavu.
+- Only when you install an agent skill: the skill in `~/.agents/skills` and your agents' `skills` folders, and the skills CLI's list of them, `~/.agents/.skill-lock.json`.
 - Logs in `~/.local/state/dejavu`, deleted after a week.
 
 `~` is your home folder. dejavu never asks for, stores or types your password. It never upgrades all your system packages at once, because that can restart services on a server.
@@ -143,6 +159,7 @@ Run `dejavu doctor` first. It shows your system, your admin rights, the package 
 | `needs the user: ... sudo ...` | Copy the command from that line into your terminal. It asks for your password. |
 | `GitHub limits downloads` | GitHub allows 60 downloads per hour without an account. Wait an hour, or log in with `gh auth login`. |
 | `No internet, or a sandbox blocks it` | Check your connection. Some AI agents run commands in a "sandbox" without internet: allow this command to use the network. |
+| `This skill was not found` | Find the right name with `dejavu search skill:WORD`. |
 | `This name or version was not found` | Find the right name with `dejavu search WORD`. After a restore from another system, change that line in your list to the new name. |
 | `Not a package name (line 7 of ...)` | That line of your list has a typo. Fix it, then run `dejavu restore` again. |
 | `command not found` right after an install | Open a new terminal. The `ok:` line also shows the full path of the tool. |
@@ -169,6 +186,7 @@ For AI agents, developers and the curious. The full guide for agents is [`skills
 | `redis`, `postgres`, `mysql`, `mongodb`, `elasticsearch`, `clickhouse`, `minio`, `neo4j` | The system package manager first, so they run as a service. mise only when the system has no such package. |
 | `npm:prettier`, `pypi:black`, `github:owner/repo`, `cargo:NAME`, `go:MODULE` | mise, from that source. dejavu first installs what it needs (node, uv, rust or go). |
 | `system:nginx`, `system:build-essential` | Always the system package manager. For servers and services, libraries, build tools, and anything every user on the computer needs. |
+| `skill:OWNER/REPO@NAME` or `skill:OWNER/REPO/NAME` | An agent skill, with the [skills CLI](https://github.com/vercel-labs/skills) (from npm, through mise). `skill:OWNER/REPO` shows the skills in that repository. |
 
 ### Exit codes
 

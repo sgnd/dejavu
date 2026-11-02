@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Agent skills: `dejavu install skill:OWNER/REPO@NAME` installs a skill from [skills.sh](https://skills.sh) for your AI agents, with the skills CLI. `search skill:WORD`, `upgrade`, `remove`, your list and `restore` work for skills too.
+
 - A name cannot be an option after its source either (`system:-o...`), so it never changes how the package manager runs.
 - `remove` on Alpine says when `apk` keeps a package that others need, instead of "ok".
 - `redis`, `postgres`, `mysql` and other servers come from the system package manager first, as a service.
