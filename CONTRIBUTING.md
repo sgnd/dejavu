@@ -78,13 +78,14 @@ The rule that prevents most bugs: **a function you call can change any variable.
 Every version is a GitHub release, and users only ever get releases. `main` can be ahead of them.
 
 1. Set `VERSION=` in `dejavu`, and add a `## X.Y.Z` section to `CHANGELOG.md` with what changed.
-2. Commit, then push the tag:
+2. Open a pull request with that change, and merge it when the tests pass. `main` only changes through pull requests.
+3. Tag the merged `main`, and push the tag:
 
    ```bash
-   git tag vX.Y.Z && git push origin main vX.Y.Z
+   git switch main && git pull && git tag vX.Y.Z && git push origin vX.Y.Z
    ```
 
-3. [Release](.github/workflows/release.yml) runs every test again, checks that the version and the changelog match the tag, and publishes the release with `dejavu` and `SKILL.md`. If a test fails, nothing is published: fix it, delete the tag (`git push origin :vX.Y.Z`) and tag again.
+4. [Release](.github/workflows/release.yml) runs every test again, checks that the version and the changelog match the tag, and publishes the release with `dejavu` and `SKILL.md`. If a test fails, nothing is published: fix it, delete the tag (`git push origin :vX.Y.Z`) and tag again.
 
 ## Writing
 
