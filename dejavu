@@ -20,7 +20,7 @@
 set -eu
 set -f # no wildcards: package names never need them
 
-VERSION=0.3.0
+VERSION=0.3.1
 # `setup` and `upgrade` download the newest release (dejavu and SKILL.md), never `main`: only tested versions.
 # Forked this repo? Put your fork's address here, so they download your releases.
 DOWNLOAD_URL="${DEJAVU_DOWNLOAD_URL:-https://github.com/sgnd/dejavu/releases/latest/download}"

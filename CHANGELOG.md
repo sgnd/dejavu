@@ -2,7 +2,7 @@
 
 Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). Setup and `dejavu upgrade` download the newest one.
 
-## Unreleased
+## 0.3.1
 
 - Quick tests (`tests/unit.sh`): names, the list, versions and hints, in seconds, without installing anything. CONTRIBUTING.md explains how `dejavu` is built.
 
