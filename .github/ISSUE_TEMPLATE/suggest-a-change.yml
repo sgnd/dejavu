@@ -1,0 +1,27 @@
+name: Suggest a change
+description: Something dejavu should do, or do better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should dejavu do?
+      description: What you or your AI agent tried, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why do you need it?
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Does it fit dejavu?
+      description: See [CONTRIBUTING.md](https://github.com/sgnd/dejavu/blob/main/CONTRIBUTING.md).
+      options:
+        - label: It helps an AI agent install command-line software on Linux or macOS (not Windows, not apps with windows)
+          required: true
+        - label: mise or the system package manager cannot already do it on their own
+          required: true
