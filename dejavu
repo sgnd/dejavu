@@ -1174,5 +1174,6 @@ main() {
 
 # All the work happens in main(), called on the last line.
 # This way `curl | sh` only starts after the whole script has downloaded.
+# DEJAVU_LIB=1: only load the functions, for the quick tests (tests/unit.sh).
 # shellcheck disable=SC2317 # main exits itself; this exit is the safety net
-{ main "$@"; exit; }
+[ -n "${DEJAVU_LIB:-}" ] || { main "$@"; exit; }

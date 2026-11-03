@@ -223,6 +223,8 @@ dejavu uses mise first, and the system package manager for the rest.
 
 ### Test
 
+`tests/unit.sh` checks names, the list and messages in seconds, and is safe on any computer: `sh tests/unit.sh`.
+
 `tests/test.sh` installs and removes real packages, so run it only in a throwaway container:
 
 ```bash

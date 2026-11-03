@@ -14,16 +14,61 @@ A change fits when all of these are true:
 - An existing tool can't already do it. dejavu uses mise and the system package manager. It does not copy what they do.
 - It keeps `dejavu` one file that runs in plain `sh`, with no extra tools.
 
+## How `dejavu` is built
+
+`dejavu` is one file on purpose: users download one file, `setup` copies it, `upgrade` replaces it. It has seven parts, in this order: Paths; Start, lock and log; The system package manager; mise; Agent skills; Your list; Commands.
+
+What happens on `dejavu install NAME`:
+
+```text
+main ── check_name (every name, before anything runs)
+     ── start (OS, lock, log, TMP)
+     ── install_and_record ── install_one ── system   (system:NAME, servers, names mise does not know)
+                           │              ├─ skill    (skill:OWNER/REPO/NAME)
+                           │              └─ mise_install (everything else; system if mise fails)
+                           │              then report: prints ok / failed / needs the user
+                           └─ record (writes the name and version into your list)
+     ── finish (summary, exit code 0, 1 or 3)
+```
+
+`remove`, `upgrade` and `restore` take the same road, through `remove_one`, `upgrade_one` and `restore`.
+
+**Shared variables.** POSIX `sh` has no local variables, so every variable is shared by all functions. Know these:
+
+| Variable | Set by | Means |
+| --- | --- | --- |
+| `MSG` | every action function | The text for the result line. `report` prints it. |
+| return code | every action function | 0 ok, 1 failed, 3 needs the user. `report` turns it into the line. |
+| `LAST` | `report` | The last result, for `main`. |
+| `spec` | `install_one`, `remove_one`, `upgrade_one` | The name, lowercased, as it goes on the list. |
+| `CMD`, `USER_CMD` | `pm_cmd`, `pm` | The package manager command, and the one to give the user. |
+| `PM`, `MISE`, `OS` | `find_pm`, `ensure_mise`, `start` | Which package manager, where mise is, linux or macos. |
+| `VER`, `VIA` | `version_of` | An installed package's version, and how it was installed. |
+| `FOUND` | `list_without` | The name as written on the list, or empty. |
+| `$TMP/step`, `$TMP/fail` | `run` | The last command's output, and the last failure's (shown under `failed:`). |
+
+The rule that prevents most bugs: **a function you call can change any variable.** `mise_install` even calls itself, to install a helper like node first. Copy a value you still need into its own variable before the call (see `why` in `mise_install`).
+
+**Where a change goes:**
+
+- A new package manager: one line per action in `pm_cmd`, and its name in `find_pm`. Nothing else.
+- A new error explained in plain words: one `elif` in `hint`.
+- A new kind of name (like `skill:`): one case in `install_one`, `remove_one`, `upgrade_one` and `version_of`.
+
+**When one file is too much.** At about 2,000 lines, or when dejavu needs real data structures (resolving versions itself, a cache, a richer list format), plain `sh` stops being simple. Then talk about it in an issue first: split the file and join it in the release, or move to another language.
+
 ## Send a pull request
 
 1. Change `dejavu`. If the change is something an agent must know, update `skills/dejavu/SKILL.md` and the README too.
 2. Run the checks:
 
    ```bash
-   shellcheck -s sh dejavu tests/test.sh
+   shellcheck -s sh dejavu tests/test.sh tests/unit.sh
+   sh tests/unit.sh   # seconds, safe on your own computer
    docker run --rm -v "$PWD:/src:ro" debian:13-slim sh /src/tests/test.sh   # the last line must say: 0 failed
    ```
 
+   `tests/unit.sh` tests the parts that only work with text (names, your list, versions, hints). Add a test there when you change one of them.
    `tests/test.sh` installs and removes real packages. Run it only in a container, never on your own computer.
 
 3. Open the pull request. [GitHub](.github/workflows/test.yml) runs the same test on Debian, Ubuntu, Fedora, Rocky Linux, Alpine, openSUSE, Arch and macOS. It also runs every Monday, because mise and the package managers change without us.

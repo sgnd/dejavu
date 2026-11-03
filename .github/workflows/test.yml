@@ -19,13 +19,15 @@ env:
 
 jobs:
   # 1. The shell scripts have no common bugs, and run in a strict POSIX shell.
+  #    Then the quick tests (seconds, nothing installed), in that strict shell too.
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: shellcheck -s sh dejavu tests/test.sh
+      - run: shellcheck -s sh dejavu tests/test.sh tests/unit.sh
       - run: sudo apt-get install -y dash && dash -n dejavu
+      - run: dash tests/unit.sh && bash tests/unit.sh
 
   # 2. Every Linux package manager, in a fresh container, on Intel/AMD and ARM.
   linux:
@@ -51,4 +53,5 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - run: sh tests/unit.sh # macOS's sh is bash 3.2
       - run: sh tests/test.sh
