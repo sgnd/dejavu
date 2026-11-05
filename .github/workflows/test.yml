@@ -1,5 +1,5 @@
-# Tests that run on GitHub after every push to main, every pull request,
-# and every Monday (mise and the package managers change without us).
+# Tests that run on GitHub after every push to main, every pull request, and every Monday
+# (pandoc, Typst, KeePassXC and ansibro change without us).
 name: Test
 
 on:
@@ -15,43 +15,64 @@ permissions:
   contents: read
 
 env:
-  GITHUB_TOKEN: ${{ github.token }} # mise downloads from GitHub (more downloads per hour with a token)
+  GITHUB_TOKEN: ${{ github.token }} # mise downloads pandoc, Typst and d2 from GitHub
+  ANSIBRO_REF: v1.2.0 # the ansibro release dejavu is tested against (SKILL.md metadata.ansibro)
 
 jobs:
-  # 1. The shell scripts have no common bugs, and run in a strict POSIX shell.
-  #    Then the quick tests (seconds, nothing installed), in that strict shell too.
+  # 1. The scripts have no common bugs, the skill file is valid, and the quick tests pass.
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: shellcheck -s sh dejavu tests/test.sh tests/unit.sh
-      - run: sudo apt-get install -y dash && dash -n dejavu
-      - run: dash tests/unit.sh && bash tests/unit.sh
+      - run: shellcheck -s sh install.sh tests/test.sh
+      - run: sudo apt-get install -y dash python3-yaml python3-jinja2 python3-cryptography && dash -n install.sh && dash -n tests/test.sh
+      - run: python3 -m py_compile skills/dejavu/scripts/handover.py tests/*.py
+      - run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: SKILL.md follows the Agent Skills format
+        run: |
+          python3 - <<'PY'
+          import re, yaml
+          text = open("skills/dejavu/SKILL.md").read()
+          front = yaml.safe_load(text.split("---")[1])
+          assert front["name"] == "dejavu", "name must equal the folder name"
+          assert len(front["description"]) <= 1024, "description: at most 1024 characters"
+          assert len(text.splitlines()) < 500, "SKILL.md: under 500 lines"
+          assert re.match(r"^\d+\.\d+\.\d+$", front["metadata"]["version"]), "metadata.version: X.Y.Z"
+          PY
 
-  # 2. Every Linux package manager, in a fresh container, on Intel/AMD and ARM.
+  # 2. Every test system, in a fresh container, on Intel/AMD and ARM: documents, leak checks,
+  #    the credentials file and the PDFs.
   linux:
     name: ${{ matrix.image }} (${{ matrix.runner }})
     strategy:
       fail-fast: false
       matrix:
-        image: [debian:13-slim, ubuntu:24.04, fedora:43, rockylinux:9, alpine:3.22, opensuse/tumbleweed]
+        image: [debian:13-slim, ubuntu:24.04]
         runner: [ubuntu-latest, ubuntu-24.04-arm]
-        include:
-          - image: archlinux:latest # Arch has no ARM image
-            runner: ubuntu-latest
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - run: docker run --rm -e GITHUB_TOKEN -v "$PWD:/src:ro" ${{ matrix.image }} sh /src/tests/test.sh
+      - uses: actions/checkout@v7
+        with: { repository: sgnd/ansibro, ref: "${{ env.ANSIBRO_REF }}", path: ansibro }
+      - run: mkdir -p samples
+      - run: >-
+          docker run --rm -e GITHUB_TOKEN -e ARTIFACTS=/samples -v "$PWD:/src:ro" -v "$PWD/ansibro:/ansibro:ro"
+          -v "$PWD/samples:/samples" ${{ matrix.image }} sh /src/tests/test.sh --install
+      - uses: actions/upload-artifact@v5
+        if: matrix.image == 'debian:13-slim' && matrix.runner == 'ubuntu-latest'
+        with: { name: samples, path: samples/ }
 
-  # 3. macOS: GitHub's Macs are throwaway, so the test runs on the Mac itself.
+  # 3. macOS: the operator's machine is often a Mac.
   macos:
     name: macOS
     runs-on: macos-latest # Apple Silicon
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - run: sh tests/unit.sh # macOS's sh is bash 3.2
-      - run: sh tests/test.sh
+      - uses: actions/checkout@v7
+        with: { repository: sgnd/ansibro, ref: "${{ env.ANSIBRO_REF }}", path: ansibro }
+      - run: brew install mise age poppler && brew install --cask keepassxc
+      - run: python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q pyyaml jinja2 cryptography
+      - run: PY="$RUNNER_TEMP/venv/bin/python" ANSIBRO="$PWD/ansibro" sh tests/test.sh

@@ -1,234 +1,243 @@
 #!/bin/sh
-# Tests dejavu for real: it installs and removes packages.
-# Run it as root in a throwaway Linux container or server, or on a throwaway Mac (like GitHub's),
-# never on your own computer:
-#   docker run --rm -v "$PWD:/src:ro" debian:13-slim sh /src/tests/test.sh
+# Tests dejavu: every test system in tests/fixtures is rendered, searched for leaks, and gets
+# its credentials file and PDFs. No real secret is used: every value is a fake "CANARY-..." made here.
 #
-# It tests as root, and as a user without sudo (when this system has `su`).
+#   sh tests/test.sh            on a machine that has the tools (see CONTRIBUTING.md)
+#   sh tests/test.sh --install  inside a throwaway container or CI only: installs the tools first
+#
+# Settings:
+#   CASES="a b"   only these test systems (default: all)
+#   ANSIBRO=DIR   an ansibro checkout (default: /ansibro, else ../ansibro next to this repo)
+#   UPDATE=1      write the golden files again (then review the diff)
+#   NO_PDF=1      skip the PDFs (faster)
 
-set -u
-
+set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-# `upgrade` downloads dejavu and SKILL.md from the newest release. Download them from a folder
-# laid out like a release instead (curl reads file://).
-REL="$(mktemp -d)"
-cp "$SRC/dejavu" "$SRC/skills/dejavu/SKILL.md" "$REL/"
-chmod 755 "$REL"
-export DEJAVU_DOWNLOAD_URL="file://$REL"
-PATH="$HOME/.local/bin:$PATH"
+SKILL="$SRC/skills/dejavu"
+H="$SKILL/scripts/handover.py"
+ANSIBRO="${ANSIBRO:-}"
+[ -n "$ANSIBRO" ] || { [ -d /ansibro ] && ANSIBRO=/ansibro; } || ANSIBRO="$SRC/../ansibro"
+[ -f "$ANSIBRO/inventory.py" ] || { echo "error: no ansibro checkout at $ANSIBRO (set ANSIBRO=DIR)" >&2; exit 2; }
+ANSIBRO="$(cd "$ANSIBRO" && pwd)"
+
+if [ "${1:-}" = --install ]; then
+  if command -v apt-get >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    kp=keepassxc-minimal
+    apt-cache show keepassxc-minimal >/dev/null 2>&1 || kp=keepassxc
+    apt-get install -y -qq --no-install-recommends python3 python3-yaml python3-jinja2 python3-cryptography \
+      "$kp" age poppler-utils git curl ca-certificates openssh-client >/dev/null
+  fi
+  if [ -z "${NO_PDF:-}" ] && ! command -v mise >/dev/null 2>&1; then
+    curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh >/dev/null
+  fi
+fi
+
+# A Python with PyYAML, Jinja2 and cryptography: ansibro's venv when it has one.
+PY="${PY:-}"
+[ -n "$PY" ] || { [ -x "$ANSIBRO/.venv/bin/python" ] && PY="$ANSIBRO/.venv/bin/python"; } || PY=python3
+export DEJAVU_TEST=1 HANDOVER_TODAY=2026-11-04 SOURCE_DATE_EPOCH=1793750400
 
 passed=0
 failed=0
-
-# Usage: expect EXIT_CODE COMMAND... (the output is kept in $out)
+pass() { passed=$((passed + 1)); }
+fail() { failed=$((failed + 1)); echo "FAIL $*"; }
+# Usage: expect CODE COMMAND... (output in $out)
 expect() {
   want=$1
   shift
-  out="$("$@" 2>&1)"
-  got=$?
-  if [ "$got" = "$want" ]; then
-    passed=$((passed + 1))
-    echo "PASS (exit $got) $*"
+  if out="$("$@" 2>&1)"; then got=0; else got=$?; fi
+  if [ "$got" = "$want" ]; then pass; else fail "(exit $got, want $want) $*"; echo "$out" | tail -n 15 | sed 's/^/    /'; fi
+}
+has() { if printf '%s\n' "$out" | grep -qF -- "$1"; then pass; else fail "output has no '$1'"; fi; }
+
+KP="$(command -v keepassxc-cli || true)"
+[ -n "$KP" ] || [ ! -x /Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli ] || KP=/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli
+[ -n "$KP" ] || { echo "error: keepassxc-cli is missing (run the tests in a container: see CONTRIBUTING.md)" >&2; exit 2; }
+PDF=1
+[ -z "${NO_PDF:-}" ] || PDF=""
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+export HOME="$TMP/home" # never the real home: no mise or KeePassXC settings change
+mkdir -p "$HOME"
+[ -z "${MISE_DATA_DIR:-}" ] || export MISE_DATA_DIR
+
+# Make a test system: a copy of ansibro with the case's config and fake secrets.
+# Usage: system CASE -> $sys (the ansibro folder) and $outdir (the output folder)
+system() {
+  case_dir="$SRC/tests/fixtures/$1"
+  sys="$TMP/$1/ansibro"
+  outdir="$TMP/$1/out"
+  rm -rf "${TMP:?}/$1"
+  mkdir -p "$sys" "$outdir"
+  (cd "$ANSIBRO" && tar --exclude ./.git --exclude ./.venv --exclude ./state --exclude ./state.age \
+    --exclude './config*.yml' -cf - .) | (cd "$sys" && tar -xf -)
+  cp "$case_dir/config.yml" "$sys/"
+  for crt in "$case_dir"/*.crt; do [ ! -f "$crt" ] || cp "$crt" "$sys/"; done
+  mkdir -p "$sys/state/secrets"
+  chmod 700 "$sys/state"
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    printf 'CANARY-%s-%s\n' "$name" "$(od -An -N9 -tx1 /dev/urandom | tr -d ' \n')" >"$sys/state/secrets/$name"
+  done <"$case_dir/secrets.txt"
+  # summary.md has every password: dejavu must never open it, only read its date.
+  echo "CANARY-summary-never-opened" >"$sys/state/summary.md"
+  touch -t 202611031200 "$sys/state/summary.md"
+  chmod 000 "$sys/state/summary.md"
+  cp "$case_dir/handover.yml" "$outdir/"
+  # Results of ansibro's acceptance test, when the case has them (the servers cannot be reached here).
+  [ ! -d "$case_dir/check" ] || cp -R "$case_dir/check" "$outdir/check"
+}
+
+# Usage: build CASE [ARGS] -> runs handover.py build for that case
+build() {
+  c=$1
+  shift
+  set -- "$H" build --ansibro "$TMP/$c/ansibro" --out "$TMP/$c/out" \
+    --inventory-json "$SRC/tests/fixtures/$c/inventory.json" --groupvars-json "$SRC/tests/fixtures/$c/groupvars.json" "$@"
+  [ -n "$PDF" ] || set -- "$@" --no-pdf
+  "$PY" "$@"
+}
+
+# No secret value anywhere in the output: neither a canary, nor a config secret.
+no_leak() {
+  if grep -rl CANARY "$outdir" --exclude='*.kdbx' --exclude='*.pdf' --exclude=handover.yml >"$TMP/leaks" 2>/dev/null; then
+    fail "$1: a secret value is in $(tr '\n' ' ' <"$TMP/leaks")"
   else
-    failed=$((failed + 1))
-    echo "FAIL (exit $got, want $want) $*"
-    echo "$out" | sed 's/^/    /'
+    pass
+  fi
+  if [ -n "$PDF" ] && command -v pdftotext >/dev/null 2>&1; then
+    find "$outdir/dist" -name '*.pdf' >"$TMP/pdfs"
+    while IFS= read -r p; do
+      if pdftotext "$p" - 2>/dev/null | grep -q CANARY; then fail "$1: a secret value is in $p"; else pass; fi
+    done <"$TMP/pdfs"
   fi
 }
 
-# Usage: has TEXT (in the output of the last expect)
-has() {
-  if printf '%s\n' "$out" | grep -qF -- "$1"; then
-    passed=$((passed + 1))
+# Compare with tests/golden/<case>/ (UPDATE=1 writes them).
+golden() {
+  g="$SRC/tests/golden/$1"
+  mkdir -p "$TMP/g"
+  rm -rf "$TMP/g/$1"
+  mkdir -p "$TMP/g/$1"
+  cp "$outdir/facts.json" "$TMP/g/$1/"
+  (cd "$outdir/dist" && find . -name '*.md' -o -name '*.txt' | while read -r f; do
+    mkdir -p "$TMP/g/$1/$(dirname "$f")" && cp "$f" "$TMP/g/$1/$f"; done)
+  (cd "$outdir/build" && find . -name '*.d2' | while read -r f; do
+    mkdir -p "$TMP/g/$1/$(dirname "$f")" && cp "$f" "$TMP/g/$1/$f"; done)
+  # File hashes in the BAST change with every PDF build: compare without them.
+  # shellcheck disable=SC2016 # backticks are Markdown here
+  # The credentials file is new with every build (KeePass uses a random salt), and PDF sizes
+  # depend on the tool versions: their hashes and sizes are not compared.
+  find "$TMP/g/$1" -name '*.md' -exec sed -i.bak -E 's/[0-9a-f]{16,}(…)?/<sha256>/g;
+    /\.(kdbx|pdf)/ s/[0-9]{1,3}([.,][0-9]{3})+|[0-9]{3,}/<size>/g' {} \;
+  find "$TMP/g/$1" \( -name '*.bak' -o -name SHA256SUMS \) -exec rm -f {} \;
+  if [ -n "${UPDATE:-}" ]; then
+    [ ! -f "$g/kdbx-entries.txt" ] || cp "$g/kdbx-entries.txt" "$TMP/g/$1/"
+    rm -rf "$g" && mkdir -p "$(dirname "$g")" && cp -R "$TMP/g/$1" "$g"
+    echo "updated tests/golden/$1"
+  elif diff -r -x kdbx-entries.txt "$g" "$TMP/g/$1" >"$TMP/diff" 2>&1; then
+    pass
   else
-    failed=$((failed + 1))
-    echo "FAIL output has no '$1':"
-    echo "$out" | sed 's/^/    /'
+    fail "$1: output differs from tests/golden/$1 (run with UPDATE=1 and review the diff)"
+    head -n 40 "$TMP/diff" | sed 's/^/    /'
   fi
 }
 
-if [ -f /etc/os-release ]; then
-  # shellcheck disable=SC1091 # a file of this machine
-  . /etc/os-release
-else
-  ID=macos PRETTY_NAME="macOS $(sw_vers -productVersion)"
-fi
-echo "=== $PRETTY_NAME ($(uname -m))"
+echo "=== dejavu tests ($(uname -s), python $("$PY" -c 'import sys; print(sys.version.split()[0])'), keepassxc-cli: ${KP:-none}, PDF: ${PDF:-no})"
 
-# --- Wrong usage ---
-expect 2 sh "$SRC/dejavu" install 'rg;ls'
-expect 2 sh "$SRC/dejavu" install -y
-expect 2 sh "$SRC/dejavu" install system:-oAPT::Get::Assume-Yes=true # an option after the source
-expect 2 sh "$SRC/dejavu" install npm:--registry=http://example.com
-# Files and URLs: the package manager would install them as root, without its repositories.
-expect 2 sh "$SRC/dejavu" install /tmp/x.deb
-expect 2 sh "$SRC/dejavu" install system:./x.deb
-expect 2 sh "$SRC/dejavu" install system:https://example.com/x.rpm
-expect 2 sh "$SRC/dejavu" install x.apk
-expect 2 sh "$SRC/dejavu" frobnicate
-expect 0 sh "$SRC/dejavu" help
+# --- Unit tests, and apps.yml against this ansibro ---
+expect 0 "$PY" -m unittest discover -s "$SRC/tests" -p 'test_*.py'
+expect 0 "$PY" "$SRC/tests/drift.py" "$ANSIBRO"
 
-# --- Setup: on a slim image this also installs curl and tar, then mise ---
-expect 0 sh "$SRC/dejavu" setup
-expect 0 sh "$SRC/dejavu" setup # again: changes nothing
-[ "$(grep -c 'added by dejavu' "$HOME/.profile")" = 1 ] || { failed=$((failed + 1)) && echo "FAIL: the PATH line is in ~/.profile more than once"; }
-
-# --- Install ---
-expect 0 dejavu install ripgrep jq
-expect 0 dejavu install ripgrep # again
-# A quick step must stay quick: the "Still working" helper never makes it wait.
-start_s=$(date +%s)
-expect 0 dejavu install ripgrep
-[ $(($(date +%s) - start_s)) -lt 20 ] || { failed=$((failed + 1)) && echo "FAIL: a quick install took $(($(date +%s) - start_s)) s"; }
-# A new login shell finds the commands by name.
-expect 0 sh -lc 'rg --version && jq --version'
-expect 1 dejavu install no-such-tool-zz9
-has "failed:"
-has "app with windows"
-expect 1 dejavu install ripgrep@99.99.99
-expect 0 dejavu install system:tree
-expect 0 sh -lc 'tree --version'
-# A plain name that comes from npm gets node first (before anything else installs node).
-expect 0 dejavu install prettier
-expect 0 sh -lc 'prettier --version'
-expect 0 dejavu install npm:cowsay
-expect 0 sh -lc 'cowsay hi'
-expect 0 dejavu install pypi:httpie # installs uv first
-expect 0 sh -lc 'http --version'
-
-# Two at once: the second waits for the first.
-dejavu install fd >/tmp/a.out 2>&1 &
-dejavu install bat >/tmp/b.out 2>&1 &
-wait
-expect 0 sh -lc 'fd --version && bat --version'
-# A lock left by a stopped dejavu whose number is now ours (like in a new container): no waiting.
-# shellcheck disable=SC2016 # expands in the new shell
-expect 0 sh -c 'mkdir -p "$HOME/.local/state/dejavu/lock" && echo $$ >"$HOME/.local/state/dejavu/lock/pid" && exec dejavu install jq'
-
-# A server comes from the system package manager, as a service.
-case "$ID" in
-  debian | ubuntu | alpine)
-    expect 0 dejavu install redis
-    if [ "$ID" = alpine ]; then has "redis (with apk)"; else has "redis (with apt-get)"; fi
-    expect 0 dejavu remove redis
-    ;;
-esac
-
-# --- Other commands ---
-expect 0 dejavu list
-has npm:cowsay
-expect 0 dejavu search grep
-expect 0 dejavu doctor
-has "admin rights: yes"
-# Busybox wget cannot read file:// (the test's download address): use curl.
-command -v curl >/dev/null 2>&1 || expect 0 dejavu install system:curl
-expect 0 dejavu upgrade
-
-# --- Agent skills ---
-expect 2 dejavu install skill:owner
-expect 2 dejavu install skill:a/b/--global
-expect 1 dejavu remove skill:vercel-labs/agent-skills/web-design-guidelines # not installed
-has "not installed"
-mkdir -p "$HOME/.claude" # an AI agent
-# The skills CLI needs Node.js 22.20 or newer. Slim images miss the library that mise's node needs.
-case "$ID" in
-  debian | ubuntu) expect 0 dejavu install system:libatomic1 ;;
-  rocky | fedora) expect 0 dejavu install system:libatomic ;;
-esac
-# Alpine: mise's node does not run there, and apk's node can be too old.
-if [ "$ID" != alpine ]; then
-  expect 0 dejavu install skill:vercel-labs/agent-skills@web-design-guidelines # installs the skills CLI first
-  expect 0 test -f "$HOME/.claude/skills/web-design-guidelines/SKILL.md"
-  expect 0 dejavu list
-  has "skill:vercel-labs/agent-skills/web-design-guidelines  # "
-  expect 1 dejavu install skill:vercel-labs/agent-skills/no-such-skill-zz9
-  has "skill was not found"
-  expect 1 dejavu install skill:vercel-labs/agent-skills # no NAME: the list of skills
-  has "web-design-guidelines"
-  expect 0 dejavu search skill:pdf
-  has "@"
-  expect 0 dejavu upgrade skill:vercel-labs/agent-skills/web-design-guidelines
-  expect 0 dejavu remove skill:vercel-labs/agent-skills/web-design-guidelines
-  expect 1 test -e "$HOME/.claude/skills/web-design-guidelines"
-  ! grep -q web-design "$HOME/.config/dejavu/packages.txt" || { failed=$((failed + 1)) && echo "FAIL: the skill is still in the list"; }
-fi
-
-# --- Your list, and moving to another computer ---
-LIST="$HOME/.config/dejavu/packages.txt"
-expect 0 dejavu list
-has "jq  # "
-has "system:tree  # "
-expect 0 dejavu install JQ # again, in capitals: still one line
-[ "$(grep -c '^jq ' "$LIST")" = 1 ] || { failed=$((failed + 1)) && echo "FAIL: jq is in the list more than once"; }
-# A scoped npm name has an @ that is not a version.
-expect 0 dejavu install npm:@biomejs/biome
-has "Commands: biome"
-expect 0 dejavu remove npm:@biomejs/biome
-! grep -q biome "$LIST" || { failed=$((failed + 1)) && echo "FAIL: biome is still in the list"; }
-# Move: keep a copy of the list, lose a tool, then restore from the copy (a relative path, Windows line ends).
-cr="$(printf '\r')"
-sed "s/\$/$cr/" "$LIST" >/tmp/old-list.txt
-expect 0 dejavu remove jq
-expect 0 sh -c 'cd /tmp && dejavu restore old-list.txt'
-has "Package 1 of"
-expect 0 sh -lc 'jq --version'
-printf 'jq\nnot;a;name\n' >/tmp/bad-list.txt
-expect 2 dejavu restore /tmp/bad-list.txt
-has "line 2"
-# A line for a package that is not installed here goes away with remove.
-echo "no-such-tool-zz9" >>"$LIST"
-expect 1 dejavu remove no-such-tool-zz9
-! grep -q no-such-tool-zz9 "$LIST" || { failed=$((failed + 1)) && echo "FAIL: no-such-tool-zz9 is still in the list"; }
-
-# --- Remove ---
-expect 0 dejavu remove jq
-expect 0 dejavu remove system:tree
-# Not on the list: dejavu did not install it, so it stays.
-expect 1 dejavu remove coreutils
-has "not on your list"
-case "$ID" in
-  macos) ;; # brew refuses itself: nothing to test
-  alpine)
-    # apk del says ok but keeps a package that apk itself needs: dejavu must say it failed.
-    expect 1 dejavu remove system:libcrypto3
-    has "kept it"
-    expect 0 apk info -e libcrypto3
-    ;;
-  *)
-    # Other packages need coreutils: dejavu must refuse, and coreutils must stay.
-    expect 1 dejavu remove system:coreutils
-    expect 0 ls /
-    ;;
-esac
-
-# --- A user without sudo ---
-if [ "$ID" != macos ] && command -v su >/dev/null 2>&1; then
-  useradd -m bob 2>/dev/null || adduser -D bob 2>/dev/null
-  as_bob() { su bob -s /bin/sh -c "PATH=\$HOME/.local/bin:\$PATH DEJAVU_DOWNLOAD_URL=$DEJAVU_DOWNLOAD_URL $*"; }
-  expect 0 as_bob "sh $SRC/dejavu setup"
-  expect 0 as_bob "dejavu install jq"
-  expect 3 as_bob "dejavu install system:htop"
-  has "needs the user:"
-  # Several: one command at the end, so the user types the password once.
-  expect 3 as_bob "dejavu install system:htop system:tree"
-  has "all at once"
-
-  # sudo with a password: dejavu cannot type it, so the user must run the command.
-  # sudo without a password: dejavu installs system packages itself.
-  if [ "$ID" != alpine ] && dejavu install system:sudo >/dev/null 2>&1; then
-    useradd -m carol && useradd -m dave
-    echo 'carol ALL=(ALL) ALL' >/etc/sudoers.d/carol
-    echo 'dave ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/dave
-    expect 3 su carol -s /bin/sh -c "sh $SRC/dejavu install system:htop"
-    has "sudo "
-    expect 0 su dave -s /bin/sh -c "sh $SRC/dejavu install system:file" # in every base repo (htop is not, on Rocky)
-    expect 0 su dave -s /bin/sh -c "sh $SRC/dejavu doctor"
-    has "admin rights: yes (sudo without a password)"
+# --- Every test system ---
+for c in ${CASES:-swarm-1-server swarm-ha k3s-ha stepca}; do
+  system "$c"
+  # Exit 3: built, and the user must now hand over the passphrase (0 when there is no credentials file).
+  expect 3 build "$c"
+  has "handover pack ready"
+  no_leak "$c"
+  golden "$c"
+  # Sample PDFs for the release (fake data).
+  if [ -n "${ARTIFACTS:-}" ] && [ "$c" = swarm-ha ] && [ -n "$PDF" ]; then
+    for p in "$outdir"/dist/*/*.pdf; do cp "$p" "$ARTIFACTS/sample-$(basename "$p")"; done
   fi
+  # Every file is in SHA256SUMS, and every hash is right.
+  if (cd "$outdir/dist" && { sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS; }) >/dev/null 2>&1; then pass; else fail "$c: SHA256SUMS does not match"; fi
+  if [ -n "$KP" ]; then
+    kdbx="$(find "$outdir/dist" -name '*.kdbx' | head -n 1)"
+    phrase="$(cat "$TMP/$c/ansibro/state/handover/"*.passphrase 2>/dev/null || true)"
+    if [ -f "$kdbx" ] && printf '%s\n' "$phrase" | "$KP" ls -R -f -q "$kdbx" >"$TMP/entries" 2>/dev/null; then
+      pass
+      if [ -n "${UPDATE:-}" ]; then
+        cp "$TMP/entries" "$SRC/tests/golden/$c/kdbx-entries.txt"
+      elif diff "$SRC/tests/golden/$c/kdbx-entries.txt" "$TMP/entries" >/dev/null; then
+        pass
+      else
+        fail "$c: kdbx entries differ"
+      fi
+    else
+      fail "$c: the credentials file does not open with its passphrase"
+    fi
+    # The passphrase file is private.
+    p="$(ls "$TMP/$c/ansibro/state/handover/"*.passphrase 2>/dev/null || echo none)"
+    case "$(ls -l "$p" 2>/dev/null)" in -rw-------*) pass ;; *) fail "$c: the passphrase file is not mode 600" ;; esac
+    # A second build keeps the same credentials file.
+    before="$(sha256sum "$kdbx" 2>/dev/null || shasum -a 256 "$kdbx")"
+    expect 3 build "$c"
+    after="$(sha256sum "$kdbx" 2>/dev/null || shasum -a 256 "$kdbx")"
+    if [ "$before" = "$after" ]; then pass; else fail "$c: a second build made a new credentials file"; fi
+  fi
+done
+
+# A password in the credentials file is the real one (garage: GK + the key file).
+if [ -n "$KP" ] && [ -d "$TMP/swarm-ha" ]; then
+  c=swarm-ha
+  kdbx="$(find "$TMP/$c/out/dist" -name '*.kdbx' | head -n 1)"
+  phrase="$(cat "$TMP/$c/ansibro/state/handover/"*.passphrase)"
+  want="$(cat "$TMP/$c/ansibro/state/secrets/postgres")"
+  got="$(printf '%s\n' "$phrase" | "$KP" show -q -s -a Password "$kdbx" "02 Database dan cache/PostgreSQL" 2>/dev/null || true)"
+  if [ "$got" = "$want" ]; then pass; else fail "the PostgreSQL password in the credentials file is wrong"; fi
+  want="GK$(cat "$TMP/$c/ansibro/state/secrets/garage_access_key")"
+  got="$(printf '%s\n' "$phrase" | "$KP" show -q -a UserName "$kdbx" "03 Penyimpanan S3/Garage S3" 2>/dev/null || true)"
+  if [ "$got" = "$want" ]; then pass; else fail "the Garage access key in the credentials file is wrong"; fi
 fi
 
-# `sudo dejavu` would put root's files in the user's home folder: dejavu refuses.
-[ "$(id -u)" != 0 ] || expect 2 env SUDO_USER=carol dejavu install jq
+# --- What must stop the build ---
+system minimal
+expect 3 build minimal                 # required answers are empty
+has "bast.number"
+expect 3 build minimal --draft         # a draft works, and asks to deliver the credentials file
+golden minimal
+# A secret pasted into handover.yml: exit 5, the secret's name is shown, its value is not.
+secret="$(cat "$TMP/minimal/ansibro/state/secrets/postgres")"
+printf 'known_issues: ["%s"]\n' "$secret" >>"$TMP/minimal/out/handover.yml"
+expect 5 build minimal --draft
+has "contains postgres"
+if printf '%s\n' "$out" | grep -qF -- "$secret"; then fail "the leak report shows the secret value"; else pass; fi
+# The output folder inside a git repository: refused.
+mkdir -p "$TMP/repo/out" && git -C "$TMP/repo" init -q
+cp "$SRC/tests/fixtures/minimal/handover.yml" "$TMP/repo/out/"
+expect 1 "$PY" "$H" build --ansibro "$TMP/minimal/ansibro" --out "$TMP/repo/out" --draft \
+  --inventory-json "$SRC/tests/fixtures/minimal/inventory.json" --groupvars-json "$SRC/tests/fixtures/minimal/groupvars.json"
+has "inside a git repository"
+# Both state/ and state.age: refused, neither touched.
+system minimal
+touch "$TMP/minimal/ansibro/state.age"
+expect 1 build minimal --draft
+has "both state/ and state.age"
+# A hand-edited document is kept.
+system swarm-1-server
+expect 3 build swarm-1-server
+echo "edited" >>"$(find "$outdir/dist" -name '*dokumentasi-teknis.md')"
+expect 1 build swarm-1-server
+has "edited by hand"
+# The passphrase is never shown to a program (only to a person at a terminal).
+expect 1 "$PY" "$H" passphrase --ansibro "$TMP/swarm-1-server/ansibro" --out "$TMP/swarm-1-server/out"
+has "only in a real terminal"
+# Test-only flags are refused outside the tests.
+expect 2 env DEJAVU_TEST= "$PY" "$H" facts --ansibro "$TMP/swarm-1-server/ansibro" --out "$TMP/x" --inventory-json /dev/null
 
-echo "=== $PRETTY_NAME: $passed passed, $failed failed"
+echo "=== dejavu tests: $passed passed, $failed failed"
 [ "$failed" = 0 ]

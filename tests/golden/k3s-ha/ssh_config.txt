@@ -1,0 +1,92 @@
+# SSH settings for PT Maju Bersama (platform.example.com), made by dejavu 1.0.0.
+# Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
+# The key file is your own key (or the one from the credentials file), never the vendor's.
+
+Host maju-data1
+  HostName 10.0.0.21
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-data2
+  HostName 10.0.0.22
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-data3
+  HostName 10.0.0.23
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-master1
+  HostName 10.0.0.11
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-master2
+  HostName 10.0.0.12
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-master3
+  HostName 10.0.0.13
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+Host maju-worker1
+  HostName 203.0.113.31
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-worker2
+  HostName 10.0.0.32
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-worker1
+
+# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# Then connect to 127.0.0.1 and the local port below.
+Host maju-tunnel
+  HostName 203.0.113.31
+  User ops
+  Port 2222
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ExitOnForwardFailure yes
+  # OpenBao API on data2
+  LocalForward 18200 10.0.0.22:8200
+  # PostgreSQL on data1
+  LocalForward 15432 10.0.0.21:5432
+  # PostgreSQL on data2
+  LocalForward 15433 10.0.0.22:5432
+  # PostgreSQL on data3
+  LocalForward 15434 10.0.0.23:5432
+  # Valkey on data1
+  LocalForward 16379 10.0.0.21:6379
+  # Valkey on data2
+  LocalForward 16380 10.0.0.22:6379
+  # Valkey on data3
+  LocalForward 16381 10.0.0.23:6379
+  # Kubernetes API on master1
+  LocalForward 16443 10.0.0.11:6443

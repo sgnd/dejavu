@@ -1,0 +1,15 @@
+# The architecture of demo.example.net, made by dejavu 1.0.0 from ansibro's facts.
+direction: down
+users: "Pengguna dan admin" {shape: person}
+dns: "DNS *.demo.example.net" {shape: cloud}
+users -> dns: HTTPS 443
+cluster: "Docker Swarm" {
+  "srv": "srv\nmanager · data\n10.1.0.5" {
+    style.stroke-width: 3
+    tooltip: "postgres"
+  }
+  services: "Aplikasi cluster\ntraefik" {shape: hexagon}
+}
+apps_1: "postgres" {shape: cylinder}
+cluster."srv" -> apps_1
+dns -> cluster."srv": "80/443"

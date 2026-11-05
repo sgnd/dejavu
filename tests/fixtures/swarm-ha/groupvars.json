@@ -1,0 +1,20 @@
+{
+ "admin_sso": "authelia",
+ "cache_app": "redis",
+ "cache_ha": true,
+ "database_app": "postgres",
+ "database_ha": true,
+ "database_host": "database-proxy_haproxy",
+ "database_port": 5432,
+ "mariadb_galera": false,
+ "monitoring_app": "victoria",
+ "postgres_patroni": true,
+ "registry_addr": "registry.ansibro:5000",
+ "swarm_app_constraint": "node.labels.tier == app",
+ "swarm_leader": "manager1",
+ "traefik_nodes": [
+  "manager1",
+  "manager2",
+  "manager3"
+ ]
+}

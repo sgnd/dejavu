@@ -1,6 +1,17 @@
 # Changelog
 
-Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). Setup and `dejavu upgrade` download the newest one.
+Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `install.sh` installs the newest one.
+
+## 1.0.0
+
+dejavu is now an agent skill that hands a server system built with ansibro over to a client.
+
+- One request to an AI agent makes the complete handover pack: the BAST (Berita Acara Serah Terima / Handover and Acceptance Certificate) with its annexes, the technical documentation, and a laptop access guide for each OS the client's staff use (Windows, macOS, Linux). In Indonesian, English or both, as Markdown and PDF/A.
+- Every password goes into one encrypted KeePassXC file. The documents never contain a password: every build searches them, and stops when it finds one.
+- The facts come from ansibro itself (its inventory, its own rules, its alert rules). The agent asks only what ansibro cannot know.
+- Install it with `install.sh` from the latest release.
+
+The package manager (0.1.0 to 0.3.1) is retired. 0.3.1 keeps working and stays available. See the README to remove it.
 
 ## 0.3.1
 

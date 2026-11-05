@@ -1,0 +1,8 @@
+domain: demo.example.net
+tls: letsencrypt
+acme_email: admin@demo.example.net
+nodes:
+  - {name: srv, ip: 10.1.0.5, host: 198.51.100.50, role: manager}
+apps:
+  traefik: swarm
+  postgres: srv

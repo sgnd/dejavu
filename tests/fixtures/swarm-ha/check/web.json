@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://traefik.nusa.example.co.id/dashboard/",
+    "dns": [
+      "203.0.113.11"
+    ],
+    "issuer": "CN=Test Self-Signed",
+    "not_after": "2027-11-04",
+    "status": 302
+  },
+  {
+    "url": "https://portainer.nusa.example.co.id/",
+    "dns": [
+      "203.0.113.11"
+    ],
+    "issuer": "CN=Test Self-Signed",
+    "not_after": "2027-11-04",
+    "status": 200
+  },
+  {
+    "url": "https://authelia.nusa.example.co.id/",
+    "dns": [
+      "203.0.113.11"
+    ],
+    "issuer": "CN=Test Self-Signed",
+    "not_after": "2027-11-04",
+    "status": 200
+  },
+  {
+    "url": "https://grafana.nusa.example.co.id/",
+    "dns": [
+      "203.0.113.11"
+    ],
+    "issuer": "CN=Test Self-Signed",
+    "not_after": "2027-11-04",
+    "status": 302
+  },
+  {
+    "url": "https://uptimekuma.nusa.example.co.id/",
+    "dns": [
+      "203.0.113.11"
+    ],
+    "issuer": "CN=Test Self-Signed",
+    "not_after": "2027-11-04",
+    "status": 302
+  }
+]

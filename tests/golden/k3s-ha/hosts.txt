@@ -1,0 +1,10 @@
+# Lines for the hosts file of platform.example.com, made by dejavu 1.0.0.
+# Use them only when there is no DNS for *.platform.example.com. One address per name: no failover.
+203.0.113.31  beszel.platform.example.com
+203.0.113.31  keycloak.platform.example.com
+203.0.113.31  oauth.platform.example.com
+203.0.113.31  kong.platform.example.com
+203.0.113.31  kong-manager.platform.example.com
+203.0.113.31  openbao.platform.example.com
+203.0.113.31  portainer.platform.example.com
+203.0.113.31  traefik.platform.example.com

@@ -1,0 +1,290 @@
+{
+  "dejavu": "1.0.0",
+  "ansibro": {
+    "version": "1.2.0",
+    "describe": null,
+    "dirty": false
+  },
+  "config": "config",
+  "last_install": "2026-11-03",
+  "state": "plain",
+  "orchestrator": "swarm",
+  "domain": "demo.example.net",
+  "tls": "letsencrypt",
+  "acme_email": "admin@demo.example.net",
+  "acme_server": null,
+  "ca_file": false,
+  "timezone": "UTC",
+  "offline": false,
+  "ssh": {
+    "user": "ubuntu",
+    "port": 22,
+    "allow_from": []
+  },
+  "admin_allow_from": [],
+  "firewall_allow": [],
+  "wireguard": false,
+  "wireguard_port": 51820,
+  "registry_addr": "registry.ansibro:5000",
+  "nodes": [
+    {
+      "name": "srv",
+      "ip": "10.1.0.5",
+      "host": "198.51.100.50",
+      "role": "manager",
+      "tier": "data",
+      "apps": [
+        "postgres"
+      ],
+      "first": true,
+      "traefik": true
+    }
+  ],
+  "first_manager": "srv",
+  "traefik_nodes": [
+    "srv"
+  ],
+  "admin_sso": "",
+  "database": {
+    "app": "postgres",
+    "ha": false,
+    "host": "10.1.0.5",
+    "port": 5432
+  },
+  "cache": null,
+  "apps": [
+    {
+      "name": "postgres",
+      "category": "database",
+      "license": "PostgreSQL",
+      "cluster": false,
+      "nodes": [
+        "srv"
+      ],
+      "primary_ip": "10.1.0.5",
+      "ha": false,
+      "known": true,
+      "info": "10.1.0.5:5432 (user postgres, password state/secrets/postgres)",
+      "about": {
+        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
+        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 5432,
+          "use": "PostgreSQL"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/postgres"
+      ],
+      "backup": "none",
+      "health": "pg_isready",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
+          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
+        },
+        {
+          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
+          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
+        }
+      ],
+      "images": [
+        {
+          "key": "postgres",
+          "repo": "docker.io/library/postgres",
+          "tag": "18.6",
+          "digest": "979bccfde354"
+        }
+      ],
+      "version": "18.6"
+    },
+    {
+      "name": "traefik",
+      "category": "gateway",
+      "license": "MIT",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://traefik.demo.example.net (user admin, password state/secrets/traefik_admin)",
+      "about": {
+        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
+        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
+      },
+      "web": [
+        {
+          "host": "traefik",
+          "path": "/dashboard/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://traefik.demo.example.net/dashboard/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/traefik"
+      ],
+      "backup": "none",
+      "health": "traefik healthcheck --ping",
+      "laptop": "web",
+      "notes": [],
+      "images": [
+        {
+          "key": "traefik",
+          "repo": "docker.io/library/traefik",
+          "tag": "v3.7.17",
+          "digest": "30ff62491aac"
+        }
+      ],
+      "version": "v3.7.17"
+    }
+  ],
+  "components": [
+    {
+      "name": "registry",
+      "where": "managers",
+      "port": 5000,
+      "version": "3.1.2",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
+        "en": "A private image registry on every manager. All servers pull images from it."
+      }
+    }
+  ],
+  "backup": {
+    "enabled": false
+  },
+  "monitoring": {
+    "app": "",
+    "channels": [],
+    "heartbeat": null,
+    "keep_days": null,
+    "uptimekuma": false
+  },
+  "alerts": [],
+  "secrets": [
+    {
+      "name": "nats",
+      "status": "stale",
+      "app": "nats",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "old",
+      "title": "NATS",
+      "user": ""
+    },
+    {
+      "name": "postgres",
+      "status": "present",
+      "app": "postgres",
+      "change": "both",
+      "audience": "client",
+      "verified": false,
+      "group": "data",
+      "title": "PostgreSQL",
+      "user": "postgres"
+    },
+    {
+      "name": "postgres_replication",
+      "status": "present",
+      "app": "postgres",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "postgres_replication",
+      "user": ""
+    },
+    {
+      "name": "registry",
+      "status": "present",
+      "app": "registry",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "infra",
+      "title": "Image registry",
+      "user": "ansibro"
+    },
+    {
+      "name": "traefik_admin",
+      "status": "present",
+      "app": "traefik",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Traefik",
+      "user": "admin"
+    },
+    {
+      "name": "traefik_salt",
+      "status": "present",
+      "app": "traefik",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "traefik_salt",
+      "user": ""
+    }
+  ],
+  "config_secrets": [],
+  "tunnels": [
+    {
+      "app": "postgres",
+      "use": "PostgreSQL",
+      "node": "srv",
+      "ip": "10.1.0.5",
+      "port": 5432,
+      "local": 15432
+    }
+  ],
+  "tls_cert": null,
+  "versions": {
+    "docker": [
+      "docker-ce 29.9.2-1",
+      "docker-ce-cli 29.9.2-1",
+      "containerd.io 2.4.2-3",
+      "docker-buildx-plugin 0.38.1-1",
+      "docker-compose-plugin 5.6.1-1"
+    ],
+    "k3s": null
+  },
+  "warnings": [
+    {
+      "id": "stale-secret",
+      "name": "nats"
+    },
+    {
+      "id": "allowlist-empty",
+      "list": "ssh.allow_from"
+    },
+    {
+      "id": "allowlist-empty",
+      "list": "admin_allow_from"
+    },
+    {
+      "id": "no-backup"
+    },
+    {
+      "id": "no-monitoring"
+    }
+  ],
+  "sources": {
+    "nodes, apps, domain, tls, ssh, allow-lists, backup, monitoring, versions": "inventory.py --list",
+    "traefik_nodes, admin_sso, database, cache, monitoring app": "group_vars/all.yml (ansible debug)",
+    "alerts": "roles/observability/files/alerts.yml",
+    "pages, ports, data, backup kind, change of passwords": "dejavu assets/apps.yml",
+    "secret names": "state/secrets (names only)",
+    "last install": "the date of state/summary.md (never opened)",
+    "ansibro version": "git describe / CHANGELOG.md"
+  }
+}

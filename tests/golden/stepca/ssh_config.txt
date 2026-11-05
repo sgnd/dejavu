@@ -1,0 +1,34 @@
+# SSH settings for PT Maju Bersama (apps.internal.example), made by dejavu 1.0.0.
+# Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
+# The key file is your own key (or the one from the credentials file), never the vendor's.
+
+Host maju-app1
+  HostName 192.168.50.11
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-data1
+  HostName 192.168.50.21
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ProxyJump maju-app1
+
+# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# Then connect to 127.0.0.1 and the local port below.
+Host maju-tunnel
+  HostName 192.168.50.11
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ExitOnForwardFailure yes
+  # MariaDB on data1
+  LocalForward 13306 192.168.50.21:3306
+  # AMQP on data1
+  LocalForward 15672 192.168.50.21:5672
+  # Valkey on data1
+  LocalForward 16379 192.168.50.21:6379

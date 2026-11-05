@@ -1,0 +1,25 @@
+01 Web logins/
+01 Web logins/Beszel
+01 Web logins/Keycloak (master)
+01 Web logins/Keycloak SSO (realm ansibro)
+01 Web logins/OpenBao root token
+01 Web logins/Portainer
+01 Web logins/Traefik
+02 Databases and cache/
+02 Databases and cache/PostgreSQL
+02 Databases and cache/Valkey
+04 Infrastructure/
+04 Infrastructure/Image registry
+05 Recovery (break-glass)/
+05 Recovery (break-glass)/OpenBao unseal key
+06 Internal (re-run ansibro)/
+06 Internal (re-run ansibro)/etcd_token
+06 Internal (re-run ansibro)/k3s_token
+06 Internal (re-run ansibro)/keycloak_db
+06 Internal (re-run ansibro)/keycloak_oauth_client
+06 Internal (re-run ansibro)/keycloak_oauth_cookie
+06 Internal (re-run ansibro)/kong_db
+06 Internal (re-run ansibro)/postgres_patroni_api
+06 Internal (re-run ansibro)/postgres_replication
+06 Internal (re-run ansibro)/traefik_salt
+06 Internal (re-run ansibro)/ansibro installer files

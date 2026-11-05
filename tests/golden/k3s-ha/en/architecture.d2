@@ -1,0 +1,37 @@
+# The architecture of platform.example.com, made by dejavu 1.0.0 from ansibro's facts.
+direction: down
+users: "Users and admins" {shape: person}
+dns: "DNS *.platform.example.com" {shape: cloud}
+users -> dns: HTTPS 443
+cluster: "k3s (Kubernetes)" {
+  "data1": "data1\nstandalone\n10.0.0.21" {
+    tooltip: "postgres, valkey"
+  }
+  "data2": "data2\nstandalone\n10.0.0.22" {
+    tooltip: "postgres, valkey, openbao"
+  }
+  "data3": "data3\nstandalone\n10.0.0.23" {
+    tooltip: "postgres, valkey, beszel"
+  }
+  "master1": "master1\nmanager · control\n10.0.0.11" {
+  }
+  "master2": "master2\nmanager · control\n10.0.0.12" {
+  }
+  "master3": "master3\nmanager · control\n10.0.0.13" {
+  }
+  "worker1": "worker1\nworker · app\n10.0.0.31" {
+    style.stroke-width: 3
+  }
+  "worker2": "worker2\nworker · app\n10.0.0.32" {
+    style.stroke-width: 3
+  }
+  services: "Cluster apps\nkeycloak, kong, portainer, traefik" {shape: hexagon}
+}
+apps_1: "postgres, valkey" {shape: cylinder}
+cluster."data1" -> apps_1
+apps_2: "postgres, valkey, openbao" {shape: cylinder}
+cluster."data2" -> apps_2
+apps_3: "postgres, valkey, beszel" {shape: cylinder}
+cluster."data3" -> apps_3
+dns -> cluster."worker1": "80/443"
+dns -> cluster."worker2": "80/443"

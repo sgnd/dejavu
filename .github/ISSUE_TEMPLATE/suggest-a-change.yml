@@ -21,7 +21,7 @@ body:
       label: Does it fit dejavu?
       description: See [CONTRIBUTING.md](https://github.com/sgnd/dejavu/blob/main/CONTRIBUTING.md).
       options:
-        - label: It helps an AI agent install command-line software on Linux or macOS (not Windows, not apps with windows)
+        - label: It helps hand a system built with ansibro over to a client (the BAST, the documentation, the laptop guides or the credentials file)
           required: true
-        - label: mise or the system package manager cannot already do it on their own
+        - label: It needs no secret value in a document
           required: true

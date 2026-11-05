@@ -1,0 +1,25 @@
+domain: platform.example.com
+tls: custom
+tls_cert: server.crt
+tls_key: key.pem
+timezone: UTC
+orchestrator: k3s
+ssh: {user: ops, key: ~/.ssh/id_ed25519, port: 2222}
+nodes:
+  - {name: master1, ip: 10.0.0.11, host: 10.0.0.11, role: manager}
+  - {name: master2, ip: 10.0.0.12, host: 10.0.0.12, role: manager}
+  - {name: master3, ip: 10.0.0.13, host: 10.0.0.13, role: manager}
+  - {name: worker1, ip: 10.0.0.31, host: 203.0.113.31, role: worker}
+  - {name: worker2, ip: 10.0.0.32, host: 10.0.0.32, role: worker}
+  - {name: data1, ip: 10.0.0.21, host: 10.0.0.21, role: standalone}
+  - {name: data2, ip: 10.0.0.22, host: 10.0.0.22, role: standalone}
+  - {name: data3, ip: 10.0.0.23, host: 10.0.0.23, role: standalone}
+apps:
+  traefik: cluster
+  portainer: cluster
+  keycloak: cluster
+  kong: cluster
+  postgres: [data1, data2, data3]
+  valkey: [data1, data2, data3]
+  openbao: data2
+  beszel: data3

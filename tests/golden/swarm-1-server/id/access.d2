@@ -1,0 +1,9 @@
+# How a laptop reaches maju.example.id, made by dejavu 1.0.0.
+direction: right
+laptop: "Laptop Anda" {shape: person}
+web: "Halaman web\nhttps://*.maju.example.id"
+laptop -> web: "HTTPS 443\nhanya IP terdaftar"
+ssh: "SSH server1\n203.0.113.10:22"
+laptop -> ssh: "kunci SSH\nhanya IP terdaftar"
+private: "Layanan privat\nPostgreSQL, Redis, S3" {shape: cylinder}
+ssh -> private: "terowongan SSH"

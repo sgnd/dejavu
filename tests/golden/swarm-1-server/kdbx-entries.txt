@@ -1,0 +1,22 @@
+01 Login web/
+01 Login web/Grafana
+01 Login web/Portainer
+01 Login web/Traefik
+02 Database dan cache/
+02 Database dan cache/PostgreSQL
+02 Database dan cache/Redis
+03 Penyimpanan S3/
+03 Penyimpanan S3/RustFS S3
+04 Infrastruktur/
+04 Infrastruktur/Image registry
+05 Pemulihan (darurat)/
+05 Pemulihan (darurat)/Backup (restic)
+05 Pemulihan (darurat)/config.yml backup.s3_access_key
+05 Pemulihan (darurat)/config.yml backup.s3_secret_key
+05 Pemulihan (darurat)/config.yml monitoring.telegram.bot_token
+06 Internal (menjalankan ulang ansibro)/
+06 Internal (menjalankan ulang ansibro)/monitor
+06 Internal (menjalankan ulang ansibro)/portainer_agent_secret
+06 Internal (menjalankan ulang ansibro)/postgres_replication
+06 Internal (menjalankan ulang ansibro)/traefik_salt
+06 Internal (menjalankan ulang ansibro)/ansibro installer files

@@ -1,0 +1,9 @@
+# How a laptop reaches apps.internal.example, made by dejavu 1.0.0.
+direction: right
+laptop: "Laptop Anda" {shape: person}
+web: "Halaman web\nhttps://*.apps.internal.example"
+laptop -> web: "HTTPS 443"
+ssh: "SSH app1\n192.168.50.11:22"
+laptop -> ssh: "kunci SSH"
+private: "Layanan privat\nMariaDB, AMQP, Valkey" {shape: cylinder}
+ssh -> private: "terowongan SSH"

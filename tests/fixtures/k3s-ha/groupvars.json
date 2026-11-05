@@ -1,0 +1,19 @@
+{
+ "admin_sso": "keycloak",
+ "cache_app": "valkey",
+ "cache_ha": true,
+ "database_app": "postgres",
+ "database_ha": true,
+ "database_host": "database-proxy.ansibro.svc.cluster.local",
+ "database_port": 5432,
+ "mariadb_galera": false,
+ "monitoring_app": "",
+ "postgres_patroni": true,
+ "registry_addr": "registry.ansibro:5000",
+ "swarm_app_constraint": "node.labels.tier == app",
+ "swarm_leader": "master1",
+ "traefik_nodes": [
+  "worker1",
+  "worker2"
+ ]
+}

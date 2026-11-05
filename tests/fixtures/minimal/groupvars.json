@@ -1,0 +1,18 @@
+{
+ "admin_sso": "",
+ "cache_app": "",
+ "cache_ha": false,
+ "database_app": "postgres",
+ "database_ha": false,
+ "database_host": "10.1.0.5",
+ "database_port": 5432,
+ "mariadb_galera": false,
+ "monitoring_app": "",
+ "postgres_patroni": false,
+ "registry_addr": "registry.ansibro:5000",
+ "swarm_app_constraint": "",
+ "swarm_leader": "srv",
+ "traefik_nodes": [
+  "srv"
+ ]
+}
