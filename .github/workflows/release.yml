@@ -1,5 +1,5 @@
-# Every version is a GitHub release: push a tag like v0.3.0, and this runs every test,
-# then publishes the release. `setup` and `dejavu upgrade` download the newest release.
+# Every version is a GitHub release: merge the version change, then push a tag like v1.0.0.
+# This runs every test again, then publishes the release with the skill and its installer.
 name: Release
 
 on:
@@ -14,7 +14,7 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
-  # 2. The release, with the two files that setup and upgrade download.
+  # 2. The release: the skill as one archive, its checksum, the installer, and sample PDFs.
   release:
     name: Release
     needs: test
@@ -23,22 +23,33 @@ jobs:
       contents: write # to publish the release
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v6
+        with: { name: samples, path: samples }
       - name: Check the version, and write the release notes from CHANGELOG.md
         run: |
           v="${GITHUB_REF_NAME#v}"
-          [ "$(sed -n 's/^VERSION=//p' dejavu)" = "$v" ] || { echo "::error::VERSION in dejavu is not $v"; exit 1; }
+          have="$(sed -n 's/^  version: "\(.*\)"$/\1/p' skills/dejavu/SKILL.md)"
+          [ "$have" = "$v" ] || { echo "::error::metadata.version in SKILL.md is $have, not $v"; exit 1; }
           awk -v h="## $v" '$0 == h { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md | sed '/./,$!d' >notes.md
           [ -s notes.md ] || { echo "::error::CHANGELOG.md has no section ## $v"; exit 1; }
-          cat >>notes.md <<'EOF'
-          Already have dejavu? Update it with: `dejavu upgrade`
+          cat >>notes.md <<'MD'
 
-          Start:
+          Install or update the skill for your AI agents:
 
           ```sh
-          curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/dejavu | sh -s -- setup
+          curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/install.sh | sh
           ```
-          EOF
+
+          The sample PDFs below are made from a test system with fake data.
+          MD
+      - name: Build the files
+        run: |
+          tar -czf dejavu-skill.tar.gz --exclude __pycache__ -C skills dejavu
+          sha256sum dejavu-skill.tar.gz >SHA256SUMS
+          ls samples
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dejavu skills/dejavu/SKILL.md --title "dejavu ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag --latest
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dejavu-skill.tar.gz SHA256SUMS install.sh samples/*.pdf
+          --title "dejavu ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag --latest

@@ -1,0 +1,11 @@
+date: 2026-11-04T10:30
+PASS  traefik: HTTP redirects to HTTPS
+PASS  traefik: the dashboard needs a login
+PASS  portainer: admin login works
+PASS  authelia: the right password is accepted, a wrong one refused
+PASS  postgres: a primary and 2 replicas
+PASS  redis: Sentinel knows the primary
+PASS  garage: 3 copies of every file
+PASS  victoria: every target is up
+PASS  uptimekuma: all monitors are up
+SKIP  backup: no snapshot yet (first night not passed)

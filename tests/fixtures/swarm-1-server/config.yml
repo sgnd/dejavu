@@ -1,0 +1,21 @@
+domain: maju.example.id
+tls: letsencrypt
+acme_email: it@maju.example.id
+timezone: Asia/Jakarta
+ssh: {user: ubuntu, key: ~/.ssh/id_ed25519, allow_from: [198.51.100.0/24]}
+admin_allow_from: [198.51.100.0/24]
+nodes:
+  - {name: server1, ip: 10.10.0.10, host: 203.0.113.10, role: manager}
+apps:
+  traefik: swarm
+  portainer: swarm
+  postgres: server1
+  redis: server1
+  rustfs: server1
+  victoria: server1
+monitoring:
+  telegram: {bot_token: "CANARY-cfg-telegram-0f3e9a7d2c41b8", chat_id: -1001234567890}
+backup:
+  repository: s3:https://s3.example.id/maju-backup
+  s3_access_key: CANARY-cfg-s3access-7a1c9e
+  s3_secret_key: CANARY-cfg-s3secret-4d8b2f6e

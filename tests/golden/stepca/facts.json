@@ -1,0 +1,584 @@
+{
+  "dejavu": "1.0.0",
+  "ansibro": {
+    "version": "1.2.0",
+    "describe": null,
+    "dirty": false
+  },
+  "config": "config",
+  "last_install": "2026-11-03",
+  "state": "plain",
+  "orchestrator": "swarm",
+  "domain": "apps.internal.example",
+  "tls": "letsencrypt",
+  "acme_email": "ops@internal.example",
+  "acme_server": "ca.internal.example",
+  "ca_file": true,
+  "timezone": "Asia/Jakarta",
+  "offline": false,
+  "ssh": {
+    "user": "ubuntu",
+    "port": 22,
+    "allow_from": []
+  },
+  "admin_allow_from": [],
+  "firewall_allow": [],
+  "wireguard": false,
+  "wireguard_port": 51820,
+  "registry_addr": "registry.ansibro:5000",
+  "nodes": [
+    {
+      "name": "app1",
+      "ip": "192.168.50.11",
+      "host": "192.168.50.11",
+      "role": "manager",
+      "tier": "app",
+      "apps": [],
+      "first": true,
+      "traefik": true
+    },
+    {
+      "name": "data1",
+      "ip": "192.168.50.21",
+      "host": "192.168.50.21",
+      "role": "standalone",
+      "tier": "",
+      "apps": [
+        "mariadb",
+        "valkey",
+        "rabbitmq",
+        "uptimekuma"
+      ],
+      "first": false,
+      "traefik": false
+    }
+  ],
+  "first_manager": "app1",
+  "traefik_nodes": [
+    "app1"
+  ],
+  "admin_sso": "",
+  "database": {
+    "app": "mariadb",
+    "ha": false,
+    "host": "192.168.50.21",
+    "port": 3306
+  },
+  "cache": {
+    "app": "valkey",
+    "ha": false
+  },
+  "apps": [
+    {
+      "name": "mariadb",
+      "category": "database",
+      "license": "GPL-2.0",
+      "cluster": false,
+      "nodes": [
+        "data1"
+      ],
+      "primary_ip": "192.168.50.21",
+      "ha": false,
+      "known": true,
+      "info": "192.168.50.21:3306 (user root, password state/secrets/mariadb)",
+      "about": {
+        "id": "Database SQL yang kompatibel dengan MySQL.",
+        "en": "An SQL database compatible with MySQL."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 3306,
+          "use": "MariaDB"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/mariadb"
+      ],
+      "backup": "dump",
+      "health": "healthcheck.sh --connect --innodb_initialized",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 3 server, MariaDB berjalan sebagai cluster Galera. Bila ketiganya mati bersamaan, cluster harus dipulihkan manual.",
+          "en": "On 3 servers MariaDB runs as a Galera cluster. If all three stop at once, the cluster must be recovered by hand."
+        },
+        {
+          "id": "Kata sandi root juga dipakai backup malam. Bila diganti hanya di MariaDB, dump malam gagal diam-diam sampai alert BackupTooOld.",
+          "en": "The nightly backup uses the root password too. If it is changed only inside MariaDB, the nightly dump fails silently until BackupTooOld fires."
+        }
+      ],
+      "images": [
+        {
+          "key": "mariadb",
+          "repo": "docker.io/library/mariadb",
+          "tag": "11.8.9",
+          "digest": "c4124d1afa87"
+        }
+      ],
+      "version": "11.8.9"
+    },
+    {
+      "name": "rabbitmq",
+      "category": "queue",
+      "license": "MPL-2.0",
+      "cluster": false,
+      "nodes": [
+        "data1"
+      ],
+      "primary_ip": "192.168.50.21",
+      "ha": false,
+      "known": true,
+      "info": "amqp://192.168.50.21:5672 (user admin, password state/secrets/rabbitmq), UI https://rabbitmq.apps.internal.example (needs traefik)",
+      "about": {
+        "id": "Antrean pesan (AMQP). Aplikasi saling menyerahkan pekerjaan lewat antrean.",
+        "en": "A message queue (AMQP). Apps hand work to each other through queues."
+      },
+      "web": [
+        {
+          "host": "rabbitmq",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://rabbitmq.apps.internal.example/"
+        }
+      ],
+      "ports": [
+        {
+          "port": 5672,
+          "use": "AMQP"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/rabbitmq"
+      ],
+      "backup": "paused",
+      "health": "rabbitmq-diagnostics -q ping",
+      "laptop": "tunnel",
+      "notes": [],
+      "images": [
+        {
+          "key": "rabbitmq",
+          "repo": "docker.io/library/rabbitmq",
+          "tag": "4.3.7-management",
+          "digest": "196312894922"
+        }
+      ],
+      "version": "4.3.7-management"
+    },
+    {
+      "name": "swarmpit",
+      "category": "management",
+      "license": "EPL-1.0",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://swarmpit.apps.internal.example (user admin, password state/secrets/swarmpit_admin)",
+      "about": {
+        "id": "Halaman web ringan untuk mengelola Docker Swarm.",
+        "en": "A lighter web page to manage Docker Swarm."
+      },
+      "web": [
+        {
+          "host": "swarmpit",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://swarmpit.apps.internal.example/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/swarmpit"
+      ],
+      "backup": "paused",
+      "health": "POST /login",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Swarmpit memakai CouchDB 2.3 dan InfluxDB 1.8 yang sudah tua. Ini risiko yang diketahui.",
+          "en": "Swarmpit uses CouchDB 2.3 and InfluxDB 1.8, which are old. This is a known risk."
+        }
+      ],
+      "images": [
+        {
+          "key": "swarmpit",
+          "repo": "docker.io/swarmpit/swarmpit",
+          "tag": "1.10",
+          "digest": "15c044a82fed"
+        },
+        {
+          "key": "swarmpit-agent",
+          "repo": "docker.io/swarmpit/agent",
+          "tag": "2.2",
+          "digest": "3c7a3900425c"
+        },
+        {
+          "key": "couchdb",
+          "repo": "docker.io/library/couchdb",
+          "tag": "2.3.1",
+          "digest": "30dc067ce470"
+        },
+        {
+          "key": "influxdb",
+          "repo": "docker.io/library/influxdb",
+          "tag": "1.8.10",
+          "digest": "299ebda2c7e3"
+        }
+      ],
+      "version": "1.10"
+    },
+    {
+      "name": "traefik",
+      "category": "gateway",
+      "license": "MIT",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://traefik.apps.internal.example (user admin, password state/secrets/traefik_admin)",
+      "about": {
+        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
+        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
+      },
+      "web": [
+        {
+          "host": "traefik",
+          "path": "/dashboard/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://traefik.apps.internal.example/dashboard/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/traefik"
+      ],
+      "backup": "paused",
+      "health": "traefik healthcheck --ping",
+      "laptop": "web",
+      "notes": [],
+      "images": [
+        {
+          "key": "traefik",
+          "repo": "docker.io/library/traefik",
+          "tag": "v3.7.17",
+          "digest": "30ff62491aac"
+        }
+      ],
+      "version": "v3.7.17"
+    },
+    {
+      "name": "uptimekuma",
+      "category": "uptime",
+      "license": "MIT",
+      "cluster": false,
+      "nodes": [
+        "data1"
+      ],
+      "primary_ip": "192.168.50.21",
+      "ha": false,
+      "known": true,
+      "info": "https://uptimekuma.apps.internal.example (user admin, password state/secrets/uptimekuma_admin). Monitors for every web page are made for you",
+      "about": {
+        "id": "Memeriksa setiap menit bahwa halaman web Anda menjawab, dan memberi tahu bila ada yang mati.",
+        "en": "Checks every minute that your web pages answer, and tells you when one is down."
+      },
+      "web": [
+        {
+          "host": "uptimekuma",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://uptimekuma.apps.internal.example/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/uptimekuma"
+      ],
+      "backup": "paused",
+      "health": "TCP 3001",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Monitor dibuat sekali saat instalasi pertama. Notifikasi (email, Telegram, dan lainnya) harus diatur sendiri di Uptime Kuma.",
+          "en": "The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself."
+        }
+      ],
+      "images": [
+        {
+          "key": "uptimekuma",
+          "repo": "docker.io/louislam/uptime-kuma",
+          "tag": "2.5.8",
+          "digest": "20abea8c48a1"
+        }
+      ],
+      "version": "2.5.8"
+    },
+    {
+      "name": "valkey",
+      "category": "cache",
+      "license": "BSD-3-Clause",
+      "cluster": false,
+      "nodes": [
+        "data1"
+      ],
+      "primary_ip": "192.168.50.21",
+      "ha": false,
+      "known": true,
+      "info": "192.168.50.21:6379 (password state/secrets/valkey)",
+      "about": {
+        "id": "Penyimpanan key-value di memori (pengganti Redis yang sepenuhnya open source), untuk cache dan sesi login.",
+        "en": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 6379,
+          "use": "Valkey"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/valkey"
+      ],
+      "backup": "paused",
+      "health": "valkey-cli ping",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
+          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
+        }
+      ],
+      "images": [
+        {
+          "key": "valkey",
+          "repo": "docker.io/valkey/valkey",
+          "tag": "9.1.3",
+          "digest": "3add1a336a92"
+        }
+      ],
+      "version": "9.1.3"
+    }
+  ],
+  "components": [
+    {
+      "name": "registry",
+      "where": "managers",
+      "port": 5000,
+      "version": "3.1.2",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
+        "en": "A private image registry on every manager. All servers pull images from it."
+      }
+    },
+    {
+      "name": "backup",
+      "where": "every server",
+      "port": null,
+      "version": "",
+      "license": "BSD-2-Clause",
+      "about": {
+        "id": "Timer ansibro-backup dengan restic setiap malam di setiap server.",
+        "en": "The ansibro-backup timer with restic, every night on every server."
+      }
+    }
+  ],
+  "backup": {
+    "enabled": true,
+    "kind": "rest",
+    "host": "backup.internal.example",
+    "where": "https://backup.internal.example/apps",
+    "time": "02:00",
+    "keep": {
+      "daily": 7,
+      "weekly": 4,
+      "monthly": 6
+    }
+  },
+  "monitoring": {
+    "app": "",
+    "channels": [],
+    "heartbeat": null,
+    "keep_days": null,
+    "uptimekuma": true
+  },
+  "alerts": [],
+  "secrets": [
+    {
+      "name": "mariadb",
+      "status": "present",
+      "app": "mariadb",
+      "change": "both",
+      "audience": "client",
+      "verified": true,
+      "group": "data",
+      "title": "MariaDB",
+      "user": "root"
+    },
+    {
+      "name": "rabbitmq",
+      "status": "present",
+      "app": "rabbitmq",
+      "change": "app",
+      "audience": "client",
+      "verified": false,
+      "group": "web",
+      "title": "RabbitMQ",
+      "user": "admin"
+    },
+    {
+      "name": "registry",
+      "status": "present",
+      "app": "registry",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "infra",
+      "title": "Image registry",
+      "user": "ansibro"
+    },
+    {
+      "name": "restic",
+      "status": "present",
+      "app": "backup",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "recovery",
+      "title": "Backup (restic)",
+      "user": ""
+    },
+    {
+      "name": "swarmpit_admin",
+      "status": "present",
+      "app": "swarmpit",
+      "change": "app",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Swarmpit",
+      "user": "admin"
+    },
+    {
+      "name": "traefik_admin",
+      "status": "present",
+      "app": "traefik",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Traefik",
+      "user": "admin"
+    },
+    {
+      "name": "traefik_salt",
+      "status": "present",
+      "app": "traefik",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "traefik_salt",
+      "user": ""
+    },
+    {
+      "name": "uptimekuma_admin",
+      "status": "present",
+      "app": "uptimekuma",
+      "change": "app",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Uptime Kuma",
+      "user": "admin"
+    },
+    {
+      "name": "valkey",
+      "status": "present",
+      "app": "valkey",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "data",
+      "title": "Valkey",
+      "user": ""
+    }
+  ],
+  "config_secrets": [
+    "backup.repository"
+  ],
+  "tunnels": [
+    {
+      "app": "mariadb",
+      "use": "MariaDB",
+      "node": "data1",
+      "ip": "192.168.50.21",
+      "port": 3306,
+      "local": 13306
+    },
+    {
+      "app": "rabbitmq",
+      "use": "AMQP",
+      "node": "data1",
+      "ip": "192.168.50.21",
+      "port": 5672,
+      "local": 15672
+    },
+    {
+      "app": "valkey",
+      "use": "Valkey",
+      "node": "data1",
+      "ip": "192.168.50.21",
+      "port": 6379,
+      "local": 16379
+    }
+  ],
+  "tls_cert": null,
+  "versions": {
+    "docker": [
+      "docker-ce 29.9.2-1",
+      "docker-ce-cli 29.9.2-1",
+      "containerd.io 2.4.2-3",
+      "docker-buildx-plugin 0.38.1-1",
+      "docker-compose-plugin 5.6.1-1"
+    ],
+    "k3s": null
+  },
+  "warnings": [
+    {
+      "id": "allowlist-empty",
+      "list": "ssh.allow_from"
+    },
+    {
+      "id": "allowlist-empty",
+      "list": "admin_allow_from"
+    },
+    {
+      "id": "backup-no-alert"
+    },
+    {
+      "id": "no-monitoring"
+    },
+    {
+      "id": "uptimekuma-notifications-manual"
+    },
+    {
+      "id": "swarmpit-old-databases"
+    }
+  ],
+  "sources": {
+    "nodes, apps, domain, tls, ssh, allow-lists, backup, monitoring, versions": "inventory.py --list",
+    "traefik_nodes, admin_sso, database, cache, monitoring app": "group_vars/all.yml (ansible debug)",
+    "alerts": "roles/observability/files/alerts.yml",
+    "pages, ports, data, backup kind, change of passwords": "dejavu assets/apps.yml",
+    "secret names": "state/secrets (names only)",
+    "last install": "the date of state/summary.md (never opened)",
+    "ansibro version": "git describe / CHANGELOG.md"
+  }
+}

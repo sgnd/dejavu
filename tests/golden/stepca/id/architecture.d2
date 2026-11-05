@@ -1,0 +1,19 @@
+# The architecture of apps.internal.example, made by dejavu 1.0.0 from ansibro's facts.
+direction: down
+users: "Pengguna dan admin" {shape: person}
+dns: "DNS *.apps.internal.example" {shape: cloud}
+users -> dns: HTTPS 443
+cluster: "Docker Swarm" {
+  "app1": "app1\nmanager · app\n192.168.50.11" {
+    style.stroke-width: 3
+  }
+  "data1": "data1\nstandalone\n192.168.50.21" {
+    tooltip: "mariadb, valkey, rabbitmq, uptimekuma"
+  }
+  services: "Aplikasi cluster\nswarmpit, traefik" {shape: hexagon}
+}
+apps_1: "mariadb, valkey, rabbitmq, uptimekuma" {shape: cylinder}
+cluster."data1" -> apps_1
+dns -> cluster."app1": "80/443"
+backup: "Backup\nrest · backup.internal.example" {shape: stored_data}
+cluster -> backup: "restic 02:00"

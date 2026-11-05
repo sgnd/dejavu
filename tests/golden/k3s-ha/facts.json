@@ -1,0 +1,974 @@
+{
+  "dejavu": "1.0.0",
+  "ansibro": {
+    "version": "1.2.0",
+    "describe": null,
+    "dirty": false
+  },
+  "config": "config",
+  "last_install": "2026-11-03",
+  "state": "plain",
+  "orchestrator": "k3s",
+  "domain": "platform.example.com",
+  "tls": "custom",
+  "acme_email": null,
+  "acme_server": null,
+  "ca_file": false,
+  "timezone": "UTC",
+  "offline": false,
+  "ssh": {
+    "user": "ops",
+    "port": 2222,
+    "allow_from": []
+  },
+  "admin_allow_from": [],
+  "firewall_allow": [],
+  "wireguard": false,
+  "wireguard_port": 51820,
+  "registry_addr": "registry.ansibro:5000",
+  "nodes": [
+    {
+      "name": "data1",
+      "ip": "10.0.0.21",
+      "host": "10.0.0.21",
+      "role": "standalone",
+      "tier": "",
+      "apps": [
+        "postgres",
+        "valkey"
+      ],
+      "first": false,
+      "traefik": false
+    },
+    {
+      "name": "data2",
+      "ip": "10.0.0.22",
+      "host": "10.0.0.22",
+      "role": "standalone",
+      "tier": "",
+      "apps": [
+        "postgres",
+        "valkey",
+        "openbao"
+      ],
+      "first": false,
+      "traefik": false
+    },
+    {
+      "name": "data3",
+      "ip": "10.0.0.23",
+      "host": "10.0.0.23",
+      "role": "standalone",
+      "tier": "",
+      "apps": [
+        "postgres",
+        "valkey",
+        "beszel"
+      ],
+      "first": false,
+      "traefik": false
+    },
+    {
+      "name": "master1",
+      "ip": "10.0.0.11",
+      "host": "10.0.0.11",
+      "role": "manager",
+      "tier": "control",
+      "apps": [],
+      "first": true,
+      "traefik": false
+    },
+    {
+      "name": "master2",
+      "ip": "10.0.0.12",
+      "host": "10.0.0.12",
+      "role": "manager",
+      "tier": "control",
+      "apps": [],
+      "first": false,
+      "traefik": false
+    },
+    {
+      "name": "master3",
+      "ip": "10.0.0.13",
+      "host": "10.0.0.13",
+      "role": "manager",
+      "tier": "control",
+      "apps": [],
+      "first": false,
+      "traefik": false
+    },
+    {
+      "name": "worker1",
+      "ip": "10.0.0.31",
+      "host": "203.0.113.31",
+      "role": "worker",
+      "tier": "app",
+      "apps": [],
+      "first": false,
+      "traefik": true
+    },
+    {
+      "name": "worker2",
+      "ip": "10.0.0.32",
+      "host": "10.0.0.32",
+      "role": "worker",
+      "tier": "app",
+      "apps": [],
+      "first": false,
+      "traefik": true
+    }
+  ],
+  "first_manager": "master1",
+  "traefik_nodes": [
+    "worker1",
+    "worker2"
+  ],
+  "admin_sso": "keycloak",
+  "database": {
+    "app": "postgres",
+    "ha": true,
+    "host": "database-proxy.ansibro.svc.cluster.local",
+    "port": 5432
+  },
+  "cache": {
+    "app": "valkey",
+    "ha": true
+  },
+  "apps": [
+    {
+      "name": "beszel",
+      "category": "monitoring",
+      "license": "MIT",
+      "cluster": false,
+      "nodes": [
+        "data3"
+      ],
+      "primary_ip": "10.0.0.23",
+      "ha": false,
+      "known": true,
+      "info": "https://beszel.platform.example.com (user admin@platform.example.com, password state/secrets/beszel_admin). Agents run on every server",
+      "about": {
+        "id": "Dasbor sederhana CPU, memori, disk, dan container setiap server, dengan peringatan yang diatur di halamannya.",
+        "en": "A simple dashboard of CPU, memory, disk and containers on every server, with alerts set in its own page."
+      },
+      "web": [
+        {
+          "host": "beszel",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://beszel.platform.example.com/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/beszel",
+        "/opt/ansibro/beszel-agent"
+      ],
+      "backup": "none",
+      "health": "beszel health",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Peringatan Beszel diatur sendiri di halaman Beszel. Installer login dengan kata sandi admin setiap kali dijalankan.",
+          "en": "Beszel alerts are set up in Beszel's own page. The installer logs in with the admin password on every run."
+        }
+      ],
+      "images": [
+        {
+          "key": "beszel",
+          "repo": "docker.io/henrygd/beszel",
+          "tag": "0.21.1",
+          "digest": "8514a69d9bbb"
+        },
+        {
+          "key": "beszel-agent",
+          "repo": "docker.io/henrygd/beszel-agent",
+          "tag": "0.21.1",
+          "digest": "cb6868012964"
+        }
+      ],
+      "version": "0.21.1"
+    },
+    {
+      "name": "keycloak",
+      "category": "auth",
+      "license": "Apache-2.0",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://keycloak.platform.example.com (user admin, password state/secrets/keycloak_admin)",
+      "about": {
+        "id": "Server login tunggal (SSO). Satu login (OIDC/SAML) untuk aplikasi dan pengguna Anda.",
+        "en": "A single sign-on server. One login (OIDC/SAML) for your apps and users."
+      },
+      "web": [
+        {
+          "host": "keycloak",
+          "path": "/",
+          "guard": "public",
+          "login": "own",
+          "url": "https://keycloak.platform.example.com/"
+        },
+        {
+          "host": "oauth",
+          "path": "/",
+          "guard": "public",
+          "login": "own",
+          "url": "https://oauth.platform.example.com/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/keycloak"
+      ],
+      "backup": "none",
+      "health": "/health/ready",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Halaman Keycloak terbuka untuk umum (tidak dibatasi IP), karena pengguna aplikasi Anda login di sana.",
+          "en": "Keycloak's page is open to anyone (no IP limit), because the users of your apps log in there."
+        },
+        {
+          "id": "Bila Keycloak menjadi login admin, realm \"ansibro\" dengan user admin melindungi halaman admin. Aplikasi autentikator diatur saat login pertama; bila yang login pertama adalah vendor, reset dulu.",
+          "en": "When Keycloak is the admin login, the realm \"ansibro\" with user admin guards the admin pages. The authenticator app is set up at the first login; if the vendor logged in first, reset it."
+        }
+      ],
+      "images": [
+        {
+          "key": "keycloak",
+          "repo": "docker.io/keycloak/keycloak",
+          "tag": "26.8.1",
+          "digest": "a78d6b795721"
+        },
+        {
+          "key": "oauth2-proxy",
+          "repo": "quay.io/oauth2-proxy/oauth2-proxy",
+          "tag": "v7.15.5",
+          "digest": "8498b0d0ef0a"
+        }
+      ],
+      "version": "26.8.1"
+    },
+    {
+      "name": "kong",
+      "category": "api-gateway",
+      "license": "Apache-2.0",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "APIs at https://kong.platform.example.com, Kong Manager https://kong-manager.platform.example.com (user admin, password state/secrets/traefik_admin)",
+      "about": {
+        "id": "Gerbang API. Satu alamat untuk API Anda, dengan API key, batas akses, dan rute.",
+        "en": "An API gateway. One address for your APIs, with API keys, rate limits and routes."
+      },
+      "web": [
+        {
+          "host": "kong",
+          "path": "/",
+          "guard": "public",
+          "login": "none",
+          "url": "https://kong.platform.example.com/"
+        },
+        {
+          "host": "kong-manager",
+          "path": "/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://kong-manager.platform.example.com/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/kong"
+      ],
+      "backup": "none",
+      "health": "kong health",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Pengaturan Kong tersimpan di database PostgreSQL \"kong\". Layanan API Anda harus bergabung ke jaringan \"kong\".",
+          "en": "Kong keeps its settings in the PostgreSQL database \"kong\". Your API services must join the network \"kong\"."
+        },
+        {
+          "id": "Alamat kong.<domain> terbuka untuk umum; itulah alamat API Anda.",
+          "en": "kong.<domain> is open to anyone; it is the address of your APIs."
+        }
+      ],
+      "images": [
+        {
+          "key": "kong",
+          "repo": "docker.io/library/kong",
+          "tag": "3.9.4",
+          "digest": "c1f5fbb80cd6"
+        }
+      ],
+      "version": "3.9.4"
+    },
+    {
+      "name": "openbao",
+      "category": "secrets",
+      "license": "MPL-2.0",
+      "cluster": false,
+      "nodes": [
+        "data2"
+      ],
+      "primary_ip": "10.0.0.22",
+      "ha": false,
+      "known": true,
+      "info": "http://10.0.0.22:8200, https://openbao.platform.example.com (root token state/secrets/openbao_root_token)",
+      "about": {
+        "id": "Brankas untuk rahasia aplikasi Anda (kata sandi, API key). Aplikasi membacanya lewat API.",
+        "en": "A safe for your apps' secrets (passwords, API keys). Apps read them through an API."
+      },
+      "web": [
+        {
+          "host": "openbao",
+          "path": "/ui/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://openbao.platform.example.com/ui/"
+        }
+      ],
+      "ports": [
+        {
+          "port": 8200,
+          "use": "OpenBao API"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/openbao"
+      ],
+      "backup": "none",
+      "health": "/v1/sys/health",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "OpenBao terkunci (sealed) setiap kali restart, dan health check-nya tetap hijau saat terkunci. Buka kuncinya dengan unseal key di halaman web, atau jalankan ./install.sh lagi.",
+          "en": "OpenBao is sealed after every restart, and its health check stays green while sealed. Unseal it with the unseal key in the web page, or run ./install.sh again."
+        },
+        {
+          "id": "Installer memakai root token setiap kali dijalankan; mencabutnya membuat instalasi berikutnya gagal.",
+          "en": "The installer uses the root token on every run; revoking it breaks the next install."
+        }
+      ],
+      "images": [
+        {
+          "key": "openbao",
+          "repo": "docker.io/openbao/openbao",
+          "tag": "2.7.2",
+          "digest": "5046911075e1"
+        }
+      ],
+      "version": "2.7.2"
+    },
+    {
+      "name": "portainer",
+      "category": "management",
+      "license": "zlib",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://portainer.platform.example.com (user admin, password state/secrets/portainer_admin)",
+      "about": {
+        "id": "Halaman web untuk melihat dan mengelola container dan stack di cluster.",
+        "en": "A web page to see and manage the containers and stacks of the cluster."
+      },
+      "web": [
+        {
+          "host": "portainer",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://portainer.platform.example.com/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/portainer"
+      ],
+      "backup": "none",
+      "health": "POST /api/auth",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.",
+          "en": "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
+        }
+      ],
+      "images": [
+        {
+          "key": "portainer",
+          "repo": "docker.io/portainer/portainer-ce",
+          "tag": "2.45.3",
+          "digest": "3609c307943b"
+        },
+        {
+          "key": "portainer-agent",
+          "repo": "docker.io/portainer/agent",
+          "tag": "2.45.3",
+          "digest": "6e6d2d5d8967"
+        }
+      ],
+      "version": "2.45.3"
+    },
+    {
+      "name": "postgres",
+      "category": "database",
+      "license": "PostgreSQL",
+      "cluster": false,
+      "nodes": [
+        "data1",
+        "data2",
+        "data3"
+      ],
+      "primary_ip": "10.0.0.21",
+      "ha": true,
+      "known": true,
+      "info": "10.0.0.21:5432 (user postgres, password state/secrets/postgres)",
+      "about": {
+        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
+        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 5432,
+          "use": "PostgreSQL"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/postgres"
+      ],
+      "backup": "none",
+      "health": "pg_isready",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
+          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
+        },
+        {
+          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
+          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
+        }
+      ],
+      "images": [
+        {
+          "key": "spilo",
+          "repo": "ghcr.io/zalando/spilo-18",
+          "tag": "4.1-p2",
+          "digest": "258a87d34699"
+        },
+        {
+          "key": "etcd",
+          "repo": "quay.io/coreos/etcd",
+          "tag": "v3.6.16",
+          "digest": "a9c7cc12156f"
+        },
+        {
+          "key": "haproxy",
+          "repo": "docker.io/library/haproxy",
+          "tag": "3.2.26",
+          "digest": "de853dd229e0"
+        }
+      ],
+      "version": "18 (Spilo 4.1-p2)"
+    },
+    {
+      "name": "traefik",
+      "category": "gateway",
+      "license": "MIT",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://traefik.platform.example.com (user admin, password state/secrets/traefik_admin)",
+      "about": {
+        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
+        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
+      },
+      "web": [
+        {
+          "host": "traefik",
+          "path": "/dashboard/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://traefik.platform.example.com/dashboard/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/traefik"
+      ],
+      "backup": "none",
+      "health": "traefik healthcheck --ping",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Di k3s yang dipakai adalah Traefik bawaan k3s, dengan versi dari k3s.",
+          "en": "On k3s this is the Traefik built into k3s, with the version that comes with k3s."
+        }
+      ],
+      "images": [],
+      "version": "k3s v1.36.5+k3s1"
+    },
+    {
+      "name": "valkey",
+      "category": "cache",
+      "license": "BSD-3-Clause",
+      "cluster": false,
+      "nodes": [
+        "data1",
+        "data2",
+        "data3"
+      ],
+      "primary_ip": "10.0.0.21",
+      "ha": true,
+      "known": true,
+      "info": "10.0.0.21:6379 (password state/secrets/valkey)",
+      "about": {
+        "id": "Penyimpanan key-value di memori (pengganti Redis yang sepenuhnya open source), untuk cache dan sesi login.",
+        "en": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 6379,
+          "use": "Valkey"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/valkey"
+      ],
+      "backup": "none",
+      "health": "valkey-cli ping",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
+          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
+        }
+      ],
+      "images": [
+        {
+          "key": "valkey",
+          "repo": "docker.io/valkey/valkey",
+          "tag": "9.1.3",
+          "digest": "3add1a336a92"
+        }
+      ],
+      "version": "9.1.3"
+    }
+  ],
+  "components": [
+    {
+      "name": "registry",
+      "where": "managers",
+      "port": 5000,
+      "version": "3.1.2",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
+        "en": "A private image registry on every manager. All servers pull images from it."
+      }
+    },
+    {
+      "name": "database-proxy",
+      "where": "cluster",
+      "port": 5432,
+      "version": "3.2.26",
+      "license": "GPL-2.0",
+      "about": {
+        "id": "HAProxy di depan database ber-HA, selalu menuju server utama (primary).",
+        "en": "HAProxy in front of the HA database, always pointing at the primary."
+      }
+    },
+    {
+      "name": "etcd",
+      "where": "managers",
+      "port": 12379,
+      "version": "v3.6.16",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Penyimpanan kunci-nilai yang dipakai Patroni untuk memilih server utama PostgreSQL.",
+        "en": "The key-value store Patroni uses to elect the PostgreSQL primary."
+      }
+    },
+    {
+      "name": "oauth2-proxy",
+      "where": "cluster",
+      "port": null,
+      "version": "v7.15.5",
+      "license": "MIT",
+      "about": {
+        "id": "Menghubungkan halaman admin ke login Keycloak, di oauth.<domain>.",
+        "en": "Connects the admin pages to the Keycloak login, at oauth.<domain>."
+      }
+    },
+    {
+      "name": "sentinel",
+      "where": "cache servers",
+      "port": 26379,
+      "version": "",
+      "license": "",
+      "about": {
+        "id": "Mengawasi Redis atau Valkey dan memindahkan primary bila server utama mati.",
+        "en": "Watches Redis or Valkey and moves the primary when it goes down."
+      }
+    },
+    {
+      "name": "k3s",
+      "where": "every server",
+      "port": 6443,
+      "version": "v1.36.5+k3s1",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Kubernetes ringan yang menjalankan aplikasi cluster.",
+        "en": "The small Kubernetes that runs the cluster apps."
+      }
+    }
+  ],
+  "backup": {
+    "enabled": false
+  },
+  "monitoring": {
+    "app": "beszel",
+    "channels": [],
+    "heartbeat": null,
+    "keep_days": null,
+    "uptimekuma": false
+  },
+  "alerts": [],
+  "secrets": [
+    {
+      "name": "beszel_admin",
+      "status": "present",
+      "app": "beszel",
+      "change": "both",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Beszel",
+      "user": "admin@platform.example.com"
+    },
+    {
+      "name": "etcd_token",
+      "status": "present",
+      "app": "etcd",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "etcd_token",
+      "user": ""
+    },
+    {
+      "name": "k3s_token",
+      "status": "present",
+      "app": "k3s",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "k3s_token",
+      "user": ""
+    },
+    {
+      "name": "keycloak_admin",
+      "status": "present",
+      "app": "keycloak",
+      "change": "both",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Keycloak (master)",
+      "user": "admin"
+    },
+    {
+      "name": "keycloak_db",
+      "status": "present",
+      "app": "keycloak",
+      "change": "file",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "keycloak_db",
+      "user": ""
+    },
+    {
+      "name": "keycloak_oauth_client",
+      "status": "present",
+      "app": "keycloak",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "keycloak_oauth_client",
+      "user": ""
+    },
+    {
+      "name": "keycloak_oauth_cookie",
+      "status": "present",
+      "app": "keycloak",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "keycloak_oauth_cookie",
+      "user": ""
+    },
+    {
+      "name": "keycloak_sso_admin",
+      "status": "present",
+      "app": "keycloak",
+      "change": "app",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Keycloak SSO (realm ansibro)",
+      "user": "admin"
+    },
+    {
+      "name": "kong_db",
+      "status": "present",
+      "app": "kong",
+      "change": "file",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "kong_db",
+      "user": ""
+    },
+    {
+      "name": "openbao_root_token",
+      "status": "present",
+      "app": "openbao",
+      "change": "both",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "OpenBao root token",
+      "user": "root"
+    },
+    {
+      "name": "openbao_unseal_key",
+      "status": "present",
+      "app": "openbao",
+      "change": "internal",
+      "audience": "recovery",
+      "verified": true,
+      "group": "recovery",
+      "title": "OpenBao unseal key",
+      "user": ""
+    },
+    {
+      "name": "portainer_admin",
+      "status": "present",
+      "app": "portainer",
+      "change": "app",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Portainer",
+      "user": "admin"
+    },
+    {
+      "name": "postgres",
+      "status": "present",
+      "app": "postgres",
+      "change": "both",
+      "audience": "client",
+      "verified": false,
+      "group": "data",
+      "title": "PostgreSQL",
+      "user": "postgres"
+    },
+    {
+      "name": "postgres_patroni_api",
+      "status": "present",
+      "app": "postgres",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "postgres_patroni_api",
+      "user": ""
+    },
+    {
+      "name": "postgres_replication",
+      "status": "present",
+      "app": "postgres",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "postgres_replication",
+      "user": ""
+    },
+    {
+      "name": "registry",
+      "status": "present",
+      "app": "registry",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "infra",
+      "title": "Image registry",
+      "user": "ansibro"
+    },
+    {
+      "name": "traefik_admin",
+      "status": "present",
+      "app": "traefik",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Traefik",
+      "user": "admin"
+    },
+    {
+      "name": "traefik_salt",
+      "status": "present",
+      "app": "traefik",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "traefik_salt",
+      "user": ""
+    },
+    {
+      "name": "valkey",
+      "status": "present",
+      "app": "valkey",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "data",
+      "title": "Valkey",
+      "user": ""
+    }
+  ],
+  "config_secrets": [],
+  "tunnels": [
+    {
+      "app": "openbao",
+      "use": "OpenBao API",
+      "node": "data2",
+      "ip": "10.0.0.22",
+      "port": 8200,
+      "local": 18200
+    },
+    {
+      "app": "postgres",
+      "use": "PostgreSQL",
+      "node": "data1",
+      "ip": "10.0.0.21",
+      "port": 5432,
+      "local": 15432
+    },
+    {
+      "app": "postgres",
+      "use": "PostgreSQL",
+      "node": "data2",
+      "ip": "10.0.0.22",
+      "port": 5432,
+      "local": 15433
+    },
+    {
+      "app": "postgres",
+      "use": "PostgreSQL",
+      "node": "data3",
+      "ip": "10.0.0.23",
+      "port": 5432,
+      "local": 15434
+    },
+    {
+      "app": "valkey",
+      "use": "Valkey",
+      "node": "data1",
+      "ip": "10.0.0.21",
+      "port": 6379,
+      "local": 16379
+    },
+    {
+      "app": "valkey",
+      "use": "Valkey",
+      "node": "data2",
+      "ip": "10.0.0.22",
+      "port": 6379,
+      "local": 16380
+    },
+    {
+      "app": "valkey",
+      "use": "Valkey",
+      "node": "data3",
+      "ip": "10.0.0.23",
+      "port": 6379,
+      "local": 16381
+    },
+    {
+      "app": "k3s",
+      "use": "Kubernetes API",
+      "node": "master1",
+      "ip": "10.0.0.11",
+      "port": 6443,
+      "local": 16443
+    }
+  ],
+  "tls_cert": {
+    "subject": "CN=*.platform.example.com",
+    "issuer": "CN=*.platform.example.com",
+    "sans": [
+      "*.platform.example.com",
+      "platform.example.com"
+    ],
+    "not_after": "2100-10-08"
+  },
+  "versions": {
+    "docker": [
+      "docker-ce 29.9.2-1",
+      "docker-ce-cli 29.9.2-1",
+      "containerd.io 2.4.2-3",
+      "docker-buildx-plugin 0.38.1-1",
+      "docker-compose-plugin 5.6.1-1"
+    ],
+    "k3s": "v1.36.5+k3s1"
+  },
+  "warnings": [
+    {
+      "id": "allowlist-empty",
+      "list": "ssh.allow_from"
+    },
+    {
+      "id": "allowlist-empty",
+      "list": "admin_allow_from"
+    },
+    {
+      "id": "no-backup"
+    },
+    {
+      "id": "beszel-alerts-manual"
+    }
+  ],
+  "sources": {
+    "nodes, apps, domain, tls, ssh, allow-lists, backup, monitoring, versions": "inventory.py --list",
+    "traefik_nodes, admin_sso, database, cache, monitoring app": "group_vars/all.yml (ansible debug)",
+    "alerts": "roles/observability/files/alerts.yml",
+    "pages, ports, data, backup kind, change of passwords": "dejavu assets/apps.yml",
+    "secret names": "state/secrets (names only)",
+    "last install": "the date of state/summary.md (never opened)",
+    "ansibro version": "git describe / CHANGELOG.md"
+  }
+}

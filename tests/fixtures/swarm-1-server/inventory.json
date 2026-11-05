@@ -1,0 +1,471 @@
+{
+ "_meta": {
+  "hostvars": {
+   "server1": {
+    "ansible_host": "203.0.113.10",
+    "node_apps": [
+     "postgres",
+     "redis",
+     "rustfs",
+     "victoria"
+    ],
+    "node_host": "203.0.113.10",
+    "node_ip": "10.10.0.10",
+    "node_labels": {
+     "tier": "data"
+    },
+    "node_role": "manager"
+   }
+  }
+ },
+ "all": {
+  "children": [
+   "swarm",
+   "standalone"
+  ],
+  "vars": {
+   "acme_email": "it@maju.example.id",
+   "admin_allow_from": [
+    "198.51.100.0/24"
+   ],
+   "ansible_port": 22,
+   "ansible_ssh_private_key_file": "/Users/suganda/.ssh/id_ed25519",
+   "ansible_user": "ubuntu",
+   "app_nodes": {
+    "postgres": [
+     "server1"
+    ],
+    "redis": [
+     "server1"
+    ],
+    "rustfs": [
+     "server1"
+    ],
+    "victoria": [
+     "server1"
+    ]
+   },
+   "apps": {
+    "portainer": "swarm",
+    "postgres": "server1",
+    "redis": "server1",
+    "rustfs": "server1",
+    "traefik": "swarm",
+    "victoria": "server1"
+   },
+   "backup": {
+    "repository": "s3:https://s3.example.id/maju-backup",
+    "s3_access_key": "CANARY-cfg-s3access-7a1c9e",
+    "s3_secret_key": "CANARY-cfg-s3secret-4d8b2f6e"
+   },
+   "bundle": {},
+   "catalog": {
+    "authelia": {
+     "category": "auth",
+     "info": "https://authelia.<domain> (user admin, password state/secrets/authelia_admin). Protect an app with the Traefik middleware authelia@file",
+     "license": "Apache-2.0",
+     "requires": [
+      "database",
+      "cache",
+      "traefik"
+     ],
+     "runs_on": "swarm"
+    },
+    "beszel": {
+     "category": "monitoring",
+     "info": "https://beszel.<domain> (user admin@<domain>, password state/secrets/beszel_admin). Agents run on every server",
+     "license": "MIT",
+     "requires": [
+      "traefik"
+     ],
+     "runs_on": "node"
+    },
+    "garage": {
+     "category": "storage",
+     "info": "S3 http://<ip>:3900, region garage (access key = GK + state/secrets/garage_access_key, secret key = state/secrets/garage_secret_key)",
+     "license": "AGPL-3.0",
+     "runs_on": "node",
+     "servers": [
+      1,
+      3
+     ]
+    },
+    "keycloak": {
+     "category": "auth",
+     "info": "https://keycloak.<domain> (user admin, password state/secrets/keycloak_admin)",
+     "license": "Apache-2.0",
+     "requires": [
+      "database",
+      "traefik"
+     ],
+     "runs_on": "swarm"
+    },
+    "kong": {
+     "category": "api-gateway",
+     "info": "APIs at https://kong.<domain>, Kong Manager https://kong-manager.<domain> (user admin, password state/secrets/traefik_admin)",
+     "license": "Apache-2.0",
+     "requires": [
+      "postgres",
+      "traefik"
+     ],
+     "runs_on": "swarm"
+    },
+    "mariadb": {
+     "category": "database",
+     "info": "<ip>:3306 (user root, password state/secrets/mariadb)",
+     "license": "GPL-2.0",
+     "runs_on": "node",
+     "servers": [
+      1,
+      3
+     ]
+    },
+    "nats": {
+     "category": "queue",
+     "info": "nats://<ip>:4222 (user admin, password state/secrets/nats). Monitoring https://nats.<domain> (needs traefik; Traefik dashboard login)",
+     "license": "Apache-2.0",
+     "runs_on": "node"
+    },
+    "openbao": {
+     "category": "secrets",
+     "info": "http://<ip>:8200, https://openbao.<domain> (root token state/secrets/openbao_root_token)",
+     "license": "MPL-2.0",
+     "runs_on": "node"
+    },
+    "portainer": {
+     "category": "management",
+     "info": "https://portainer.<domain> (user admin, password state/secrets/portainer_admin)",
+     "license": "zlib",
+     "requires": [
+      "traefik"
+     ],
+     "runs_on": "swarm"
+    },
+    "postgres": {
+     "category": "database",
+     "info": "<ip>:5432 (user postgres, password state/secrets/postgres)",
+     "license": "PostgreSQL",
+     "runs_on": "node",
+     "servers": [
+      1,
+      2,
+      3
+     ]
+    },
+    "rabbitmq": {
+     "category": "queue",
+     "info": "amqp://<ip>:5672 (user admin, password state/secrets/rabbitmq), UI https://rabbitmq.<domain> (needs traefik)",
+     "license": "MPL-2.0",
+     "runs_on": "node"
+    },
+    "redis": {
+     "category": "cache",
+     "info": "<ip>:6379 (password state/secrets/redis)",
+     "license": "AGPL-3.0 (Redis 8 is tri-licensed, used under AGPL)",
+     "runs_on": "node",
+     "servers": [
+      1,
+      3
+     ]
+    },
+    "rustfs": {
+     "category": "storage",
+     "info": "S3 http://<ip>:9000 (keys state/secrets/rustfs_access_key, rustfs_secret_key), console https://rustfs.<domain>/rustfs/console/ (needs traefik)",
+     "license": "Apache-2.0",
+     "runs_on": "node"
+    },
+    "swarmpit": {
+     "category": "management",
+     "info": "https://swarmpit.<domain> (user admin, password state/secrets/swarmpit_admin)",
+     "license": "EPL-1.0",
+     "requires": [
+      "traefik"
+     ],
+     "runs_on": "swarm"
+    },
+    "traefik": {
+     "category": "gateway",
+     "info": "https://traefik.<domain> (user admin, password state/secrets/traefik_admin)",
+     "license": "MIT",
+     "runs_on": "swarm"
+    },
+    "uptimekuma": {
+     "category": "uptime",
+     "info": "https://uptimekuma.<domain> (user admin, password state/secrets/uptimekuma_admin). Monitors for every web page are made for you",
+     "license": "MIT",
+     "requires": [
+      "traefik"
+     ],
+     "runs_on": "node"
+    },
+    "valkey": {
+     "category": "cache",
+     "info": "<ip>:6379 (password state/secrets/valkey)",
+     "license": "BSD-3-Clause",
+     "runs_on": "node",
+     "servers": [
+      1,
+      3
+     ]
+    },
+    "victoria": {
+     "category": "monitoring",
+     "info": "Grafana https://grafana.<domain> (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.<domain>, metrics https://metrics.<domain>/vmui, logs https://logs.<domain>/select/vmui",
+     "license": "Apache-2.0 (VictoriaMetrics, VictoriaLogs, Alertmanager), AGPL-3.0 (Grafana)",
+     "requires": [
+      "traefik"
+     ],
+     "runs_on": "node"
+    }
+   },
+   "docker_packages": [
+    "docker-ce=5:29.9.2-1*",
+    "docker-ce-cli=5:29.9.2-1*",
+    "containerd.io=2.4.2-3*",
+    "docker-buildx-plugin=0.38.1-1*",
+    "docker-compose-plugin=5.6.1-1*"
+   ],
+   "domain": "maju.example.id",
+   "images": {
+    "alertmanager": {
+     "digest": "sha256:39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b",
+     "repo": "docker.io/prom/alertmanager",
+     "tag": "v0.34.2"
+    },
+    "authelia": {
+     "digest": "sha256:bd97cff4fcbf715b5ff1f9ae286afbe6033afce385302520b0368122d43a6f54",
+     "repo": "docker.io/authelia/authelia",
+     "tag": "4.39.28"
+    },
+    "beszel": {
+     "digest": "sha256:8514a69d9bbbcb74f371a3205561ee231fc0289739cea64e8131f341d695b770",
+     "repo": "docker.io/henrygd/beszel",
+     "tag": "0.21.1"
+    },
+    "beszel-agent": {
+     "digest": "sha256:cb6868012964d7a68debaa2c84bb72285e5f08531e81f506bd4c493bf052e41c",
+     "repo": "docker.io/henrygd/beszel-agent",
+     "tag": "0.21.1"
+    },
+    "cadvisor": {
+     "digest": "sha256:3de2bd5203120b866d74a9b283b2ffb8ec382fbf9dc321814700c6ea6f44ec57",
+     "repo": "gcr.io/cadvisor/cadvisor",
+     "tag": "v0.55.1"
+    },
+    "couchdb": {
+     "digest": "sha256:30dc067ce470fd437f4074d41f150fa81c1ff9c923a371d38f155d1a36159f4e",
+     "repo": "docker.io/library/couchdb",
+     "tag": "2.3.1"
+    },
+    "etcd": {
+     "digest": "sha256:a9c7cc12156f4b26ca41f0b57ba5b76c45037ff6c1e47ea3d68cb7908d48a965",
+     "repo": "quay.io/coreos/etcd",
+     "tag": "v3.6.16"
+    },
+    "garage": {
+     "digest": "sha256:677e5b758e4425a325b811c425c026bf35a4bf42f7ddbaa773de3f4fd779a5a5",
+     "repo": "docker.io/dxflrs/garage",
+     "tag": "v2.5.0"
+    },
+    "grafana": {
+     "digest": "sha256:9f7aa1e1e3246aade5792d35a738049f7f32f89cd51d1956cf426a4e86268a84",
+     "repo": "docker.io/grafana/grafana",
+     "tag": "13.2.5"
+    },
+    "haproxy": {
+     "digest": "sha256:de853dd229e0f13e0104b288a487e1e12eb3965618f9b88f49ef8d5a6d83c001",
+     "repo": "docker.io/library/haproxy",
+     "tag": "3.2.26"
+    },
+    "influxdb": {
+     "digest": "sha256:299ebda2c7e308dbef42e26ac9b8fd1d9b3bcb8a0aee80c6509aa0219c1d0290",
+     "repo": "docker.io/library/influxdb",
+     "tag": "1.8.10"
+    },
+    "keycloak": {
+     "digest": "sha256:a78d6b79572168cb25886b80a8b5b8d4ed4390743e3eecb810538683e209dd6b",
+     "repo": "docker.io/keycloak/keycloak",
+     "tag": "26.8.1"
+    },
+    "kong": {
+     "digest": "sha256:c1f5fbb80cd666b4b29b4e97875ecd64d93b01b23fb3083bc3e424b3bad5fdd5",
+     "repo": "docker.io/library/kong",
+     "tag": "3.9.4"
+    },
+    "mariadb": {
+     "digest": "sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd",
+     "repo": "docker.io/library/mariadb",
+     "tag": "11.8.9"
+    },
+    "mysqld-exporter": {
+     "digest": "sha256:afad0c59a154fea24ca5ea0e6f95f2b0b168601b111266963dc8a347715b5318",
+     "repo": "docker.io/prom/mysqld-exporter",
+     "tag": "v0.21.0"
+    },
+    "nats": {
+     "digest": "sha256:991242c32d2738ffd358fd6614dd96c735017b4b3b34bfdb2c52a072d66db211",
+     "repo": "docker.io/library/nats",
+     "tag": "2.15.2"
+    },
+    "node-exporter": {
+     "digest": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+     "repo": "docker.io/prom/node-exporter",
+     "tag": "v1.12.1"
+    },
+    "oauth2-proxy": {
+     "digest": "sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916",
+     "repo": "quay.io/oauth2-proxy/oauth2-proxy",
+     "tag": "v7.15.5"
+    },
+    "openbao": {
+     "digest": "sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f",
+     "repo": "docker.io/openbao/openbao",
+     "tag": "2.7.2"
+    },
+    "portainer": {
+     "digest": "sha256:3609c307943bca8e5c492f69ddd6965df177208b50678a4cff28391c8dd4e96e",
+     "repo": "docker.io/portainer/portainer-ce",
+     "tag": "2.45.3"
+    },
+    "portainer-agent": {
+     "digest": "sha256:6e6d2d5d8967da5b4d45eab32b7268af170395395d753d3f34ecb4d6ca5bd388",
+     "repo": "docker.io/portainer/agent",
+     "tag": "2.45.3"
+    },
+    "postgres": {
+     "digest": "sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4",
+     "repo": "docker.io/library/postgres",
+     "tag": "18.6"
+    },
+    "postgres-exporter": {
+     "digest": "sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e",
+     "repo": "docker.io/prometheuscommunity/postgres-exporter",
+     "tag": "v0.20.1"
+    },
+    "rabbitmq": {
+     "digest": "sha256:19631289492291db06639e466539be96fa84236fc6ae22ab2babe90f6fa26af7",
+     "repo": "docker.io/library/rabbitmq",
+     "tag": "4.3.7-management"
+    },
+    "redis": {
+     "digest": "sha256:298641b35ac51aa999f9bb85707d6681fe635ce59cda51886a0b6adc1da37b8e",
+     "repo": "docker.io/library/redis",
+     "tag": "8.10.3"
+    },
+    "redis-exporter": {
+     "digest": "sha256:3d57b9eb142a62ffc600063606a41cd471cd53d81bed10be5b56b3a8918f2c26",
+     "repo": "docker.io/oliver006/redis_exporter",
+     "tag": "v1.96.0"
+    },
+    "registry": {
+     "digest": "sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3",
+     "repo": "docker.io/library/registry",
+     "tag": "3.1.2"
+    },
+    "rustfs": {
+     "digest": "sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2",
+     "repo": "docker.io/rustfs/rustfs",
+     "tag": "1.0.4"
+    },
+    "spilo": {
+     "digest": "sha256:258a87d34699387f3b6b45d30874c21c6b838ed51c9371ae2a70151d57137990",
+     "repo": "ghcr.io/zalando/spilo-18",
+     "tag": "4.1-p2"
+    },
+    "swarmpit": {
+     "digest": "sha256:15c044a82feda149327822fc49e74a95d8f64da4c57aefe1781614f2e9c8830f",
+     "repo": "docker.io/swarmpit/swarmpit",
+     "tag": "1.10"
+    },
+    "swarmpit-agent": {
+     "digest": "sha256:3c7a3900425c2d86dba09e0483f667ca989052fddb6afe196e037688426e62ae",
+     "repo": "docker.io/swarmpit/agent",
+     "tag": "2.2"
+    },
+    "traefik": {
+     "digest": "sha256:30ff62491aacdb862ceb8c9edcf2627da638d7deafdd4b6dab32fe34f8aa3e90",
+     "repo": "docker.io/library/traefik",
+     "tag": "v3.7.17"
+    },
+    "uptimekuma": {
+     "digest": "sha256:20abea8c48a163cf0a7a5d5936ab418e4b742d908704e1f58f6c06e56a9c6b67",
+     "repo": "docker.io/louislam/uptime-kuma",
+     "tag": "2.5.8"
+    },
+    "valkey": {
+     "digest": "sha256:3add1a336a920ea54770a001ab6feb3da5fceea96a40373a3a2cd469b815f0b7",
+     "repo": "docker.io/valkey/valkey",
+     "tag": "9.1.3"
+    },
+    "vector": {
+     "digest": "sha256:f6c23b5a7e16fb2838d33619ef7acf4bad2289a7cf22bc90efc2371f520c4ea2",
+     "repo": "docker.io/timberio/vector",
+     "tag": "0.61.0-debian"
+    },
+    "victorialogs": {
+     "digest": "sha256:251121fa882af99b95ba0c230a4a2f412ea602d2698c64a96c58dc9842bb755d",
+     "repo": "docker.io/victoriametrics/victoria-logs",
+     "tag": "v1.53.0"
+    },
+    "victoriametrics": {
+     "digest": "sha256:f60dc268b54ecf87f6e09d740c2b732838aa9193090cc741417c9f6386a130df",
+     "repo": "docker.io/victoriametrics/victoria-metrics",
+     "tag": "v1.155.0"
+    },
+    "vmalert": {
+     "digest": "sha256:3256cba5ddaca5974eae6141105cec4ce37871f1c213f0a5c267ec0111bc68e1",
+     "repo": "docker.io/victoriametrics/vmalert",
+     "tag": "v1.155.0"
+    }
+   },
+   "k3s": {
+    "binary": "d73847bcd3c5fccef0115b372e2f9a91f3032dc84bbf71518a4617565294d313",
+    "images": "7d939471907df2d4e537a9c308bf94173e453fff4a2e9e77e9ae92a64be3007f",
+    "version": "v1.36.5+k3s1"
+   },
+   "kong_subnet": "10.200.255.0/24",
+   "monitoring": {
+    "telegram": {
+     "bot_token": "CANARY-cfg-telegram-0f3e9a7d2c41b8",
+     "chat_id": -1001234567890
+    }
+   },
+   "offline": false,
+   "orchestrator": "swarm",
+   "registry_port": 5000,
+   "ssh": {
+    "allow_from": [
+     "198.51.100.0/24"
+    ],
+    "key": "~/.ssh/id_ed25519",
+    "user": "ubuntu"
+   },
+   "swarm_address_pool": "10.200.0.0/16",
+   "swarm_apps": [
+    "traefik",
+    "portainer"
+   ],
+   "timezone": "Asia/Jakarta",
+   "tls": "letsencrypt",
+   "wireguard": false,
+   "wireguard_port": 51820
+  }
+ },
+ "managers": {
+  "hosts": [
+   "server1"
+  ]
+ },
+ "standalone": {
+  "hosts": []
+ },
+ "swarm": {
+  "children": [
+   "managers",
+   "workers"
+  ]
+ },
+ "workers": {
+  "hosts": []
+ }
+}

@@ -1,0 +1,35 @@
+01 Login web/
+01 Login web/Authelia
+01 Login web/Grafana
+01 Login web/Portainer
+01 Login web/Traefik
+01 Login web/Uptime Kuma
+02 Database dan cache/
+02 Database dan cache/PostgreSQL
+02 Database dan cache/Redis
+03 Penyimpanan S3/
+03 Penyimpanan S3/Garage S3
+04 Infrastruktur/
+04 Infrastruktur/Image registry
+04 Infrastruktur/SSH key (client)
+05 Pemulihan (darurat)/
+05 Pemulihan (darurat)/Backup (restic)
+05 Pemulihan (darurat)/config.yml backup.s3_access_key
+05 Pemulihan (darurat)/config.yml backup.s3_secret_key
+05 Pemulihan (darurat)/config.yml monitoring.webhook
+06 Internal (menjalankan ulang ansibro)/
+06 Internal (menjalankan ulang ansibro)/authelia_db
+06 Internal (menjalankan ulang ansibro)/authelia_jwt_secret
+06 Internal (menjalankan ulang ansibro)/authelia_session_secret
+06 Internal (menjalankan ulang ansibro)/authelia_storage_key
+06 Internal (menjalankan ulang ansibro)/etcd_token
+06 Internal (menjalankan ulang ansibro)/garage_admin_token
+06 Internal (menjalankan ulang ansibro)/garage_rpc_secret
+06 Internal (menjalankan ulang ansibro)/monitor
+06 Internal (menjalankan ulang ansibro)/portainer_agent_secret
+06 Internal (menjalankan ulang ansibro)/postgres_patroni_api
+06 Internal (menjalankan ulang ansibro)/postgres_replication
+06 Internal (menjalankan ulang ansibro)/traefik_salt
+06 Internal (menjalankan ulang ansibro)/ansibro installer files
+07 Lama (aplikasi yang sudah dihapus)/
+07 Lama (aplikasi yang sudah dihapus)/swarmpit_admin

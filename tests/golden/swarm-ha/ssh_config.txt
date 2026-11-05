@@ -1,0 +1,94 @@
+# SSH settings for PT Maju Bersama (nusa.example.co.id), made by dejavu 1.0.0.
+# Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
+# The key file is your own key (or the one from the credentials file), never the vendor's.
+
+Host maju-data1
+  HostName 203.0.113.21
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-data2
+  HostName 203.0.113.22
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-data3
+  HostName 203.0.113.23
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-manager1
+  HostName 203.0.113.11
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-manager2
+  HostName 203.0.113.12
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-manager3
+  HostName 203.0.113.13
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-worker1
+  HostName 203.0.113.31
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-worker2
+  HostName 203.0.113.32
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+Host maju-worker3
+  HostName 203.0.113.33
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+
+# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# Then connect to 127.0.0.1 and the local port below.
+Host maju-tunnel
+  HostName 203.0.113.21
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/maju_ed25519
+  IdentitiesOnly yes
+  ExitOnForwardFailure yes
+  # S3 on data1
+  LocalForward 13900 10.0.0.21:3900
+  # S3 on data2
+  LocalForward 13901 10.0.0.22:3900
+  # S3 on data3
+  LocalForward 13902 10.0.0.23:3900
+  # PostgreSQL on data1
+  LocalForward 15432 10.0.0.21:5432
+  # PostgreSQL on data2
+  LocalForward 15433 10.0.0.22:5432
+  # PostgreSQL on data3
+  LocalForward 15434 10.0.0.23:5432
+  # Redis on data1
+  LocalForward 16379 10.0.0.21:6379
+  # Redis on data2
+  LocalForward 16380 10.0.0.22:6379
+  # Redis on data3
+  LocalForward 16381 10.0.0.23:6379

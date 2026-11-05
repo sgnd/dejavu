@@ -1,6 +1,6 @@
 # Security
 
-dejavu installs software on your computer, and AI agents run it. So security problems matter here.
+dejavu reads the passwords of a whole server system and puts them in a file for a client, and AI agents run it. So security problems matter here.
 
 ## Report a problem
 
@@ -9,23 +9,27 @@ Please don't open a public issue for a security problem. Report it privately ins
 1. Open the [Security tab](https://github.com/sgnd/dejavu/security) of this repo.
 2. Click **Report a vulnerability**.
 
-You get an answer within a week. Once it is fixed, a new release says what changed.
+You get an answer within a week. Once it is fixed, a new release says what changed. Never attach a real `.kdbx` file, `state/`, a `handover.yml` or generated documents of a real client.
 
 ## What counts
 
-- A way to make `dejavu` do something it should not. For example: run other code than the package manager, change files outside what the README lists, or skip the check on package names.
-- A way to make an AI agent install something other than what the user asked for, because of how dejavu or `SKILL.md` works.
+- A way for a password, key or token to reach a document, a diagram, `facts.json`, the screen, a log, a command line, or the AI agent's conversation.
+- A way for the leak check to miss a secret value.
+- A way to make dejavu write into ansibro's `state/` other than its own passphrase file, or leave `state.age` open.
+- A way for the credentials file to hold a wrong value, or to be readable without its passphrase.
+- Instructions in `SKILL.md` that would lead an agent to read or send a secret.
 
-A security problem in a tool that dejavu installs, in mise, or in a system package manager belongs to that project. Report it there.
+A security problem in ansibro, KeePassXC, pandoc, Typst or d2 belongs to that project. Report it there.
 
-## How dejavu keeps you safe
+## How dejavu keeps the passwords safe
 
-- It accepts only plain package names, never shell code, options, files or URLs.
-- mise checks downloads with a checksum, and a signature, where the tool's source has one. Tools from npm, PyPI, cargo or go come from those registries as they are.
-- It never asks for, stores or types your password. When a password is needed, it tells you the command to run yourself.
-- It removes only what it installed (what is on your list), unless you name a system package with `system:NAME`.
-- It refuses to remove a system package that other packages need.
+- Secret values are read into memory only, to build the credentials file and to search the output for leaks. They go to `keepassxc-cli` on its standard input, never on a command line.
+- Every build searches every generated text file and `handover.yml` for every secret value (and forms derived from them) and for secret-looking patterns. On a hit it stops, deletes the files of that run, and names the secret, never its value.
+- The documents are built from an allow-list of facts. A setting dejavu does not know is left out.
+- With `state.age`, dejavu reads the passwords from the encrypted file straight into memory. It writes only its own passphrase file, through ansibro's `scripts/state.sh`, and closes it again.
+- The passphrase is shown only in a real terminal, so it never reaches an AI agent or a log. It must travel to the client on another channel than the file.
+- The output folder is refused inside a git repository, so the credentials file is never committed.
 
 ## Supported versions
 
-Only the newest release gets fixes. Setup and `dejavu upgrade` always download the newest release, never `main`.
+Only the newest release gets fixes. `install.sh` always installs the newest release, never `main`.

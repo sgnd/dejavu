@@ -1,0 +1,19 @@
+domain: apps.internal.example
+tls: letsencrypt
+acme_email: ops@internal.example
+acme_server: https://ca.internal.example/acme/acme/directory
+acme_ca_cert: ca.crt
+timezone: Asia/Jakarta
+ssh: {user: ubuntu, key: ~/.ssh/id_ed25519}
+nodes:
+  - {name: app1, ip: 192.168.50.11, host: 192.168.50.11, role: manager}
+  - {name: data1, ip: 192.168.50.21, host: 192.168.50.21, role: standalone}
+apps:
+  traefik: swarm
+  swarmpit: swarm
+  mariadb: data1
+  valkey: data1
+  rabbitmq: data1
+  uptimekuma: data1
+backup:
+  repository: rest:https://backup:CANARY-cfg-restpass-62fa19@backup.internal.example/apps

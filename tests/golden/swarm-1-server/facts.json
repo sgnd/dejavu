@@ -1,0 +1,896 @@
+{
+  "dejavu": "1.0.0",
+  "ansibro": {
+    "version": "1.2.0",
+    "describe": null,
+    "dirty": false
+  },
+  "config": "config",
+  "last_install": "2026-11-03",
+  "state": "plain",
+  "orchestrator": "swarm",
+  "domain": "maju.example.id",
+  "tls": "letsencrypt",
+  "acme_email": "it@maju.example.id",
+  "acme_server": null,
+  "ca_file": false,
+  "timezone": "Asia/Jakarta",
+  "offline": false,
+  "ssh": {
+    "user": "ubuntu",
+    "port": 22,
+    "allow_from": [
+      "198.51.100.0/24"
+    ]
+  },
+  "admin_allow_from": [
+    "198.51.100.0/24"
+  ],
+  "firewall_allow": [],
+  "wireguard": false,
+  "wireguard_port": 51820,
+  "registry_addr": "registry.ansibro:5000",
+  "nodes": [
+    {
+      "name": "server1",
+      "ip": "10.10.0.10",
+      "host": "203.0.113.10",
+      "role": "manager",
+      "tier": "data",
+      "apps": [
+        "postgres",
+        "redis",
+        "rustfs",
+        "victoria"
+      ],
+      "first": true,
+      "traefik": true
+    }
+  ],
+  "first_manager": "server1",
+  "traefik_nodes": [
+    "server1"
+  ],
+  "admin_sso": "",
+  "database": {
+    "app": "postgres",
+    "ha": false,
+    "host": "10.10.0.10",
+    "port": 5432
+  },
+  "cache": {
+    "app": "redis",
+    "ha": false
+  },
+  "apps": [
+    {
+      "name": "portainer",
+      "category": "management",
+      "license": "zlib",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://portainer.maju.example.id (user admin, password state/secrets/portainer_admin)",
+      "about": {
+        "id": "Halaman web untuk melihat dan mengelola container dan stack di cluster.",
+        "en": "A web page to see and manage the containers and stacks of the cluster."
+      },
+      "web": [
+        {
+          "host": "portainer",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://portainer.maju.example.id/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/portainer"
+      ],
+      "backup": "paused",
+      "health": "POST /api/auth",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.",
+          "en": "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
+        }
+      ],
+      "images": [
+        {
+          "key": "portainer",
+          "repo": "docker.io/portainer/portainer-ce",
+          "tag": "2.45.3",
+          "digest": "3609c307943b"
+        },
+        {
+          "key": "portainer-agent",
+          "repo": "docker.io/portainer/agent",
+          "tag": "2.45.3",
+          "digest": "6e6d2d5d8967"
+        }
+      ],
+      "version": "2.45.3"
+    },
+    {
+      "name": "postgres",
+      "category": "database",
+      "license": "PostgreSQL",
+      "cluster": false,
+      "nodes": [
+        "server1"
+      ],
+      "primary_ip": "10.10.0.10",
+      "ha": false,
+      "known": true,
+      "info": "10.10.0.10:5432 (user postgres, password state/secrets/postgres)",
+      "about": {
+        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
+        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 5432,
+          "use": "PostgreSQL"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/postgres"
+      ],
+      "backup": "dump",
+      "health": "pg_isready",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
+          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
+        },
+        {
+          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
+          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
+        }
+      ],
+      "images": [
+        {
+          "key": "postgres",
+          "repo": "docker.io/library/postgres",
+          "tag": "18.6",
+          "digest": "979bccfde354"
+        }
+      ],
+      "version": "18.6"
+    },
+    {
+      "name": "redis",
+      "category": "cache",
+      "license": "AGPL-3.0 (Redis 8 is tri-licensed, used under AGPL)",
+      "cluster": false,
+      "nodes": [
+        "server1"
+      ],
+      "primary_ip": "10.10.0.10",
+      "ha": false,
+      "known": true,
+      "info": "10.10.0.10:6379 (password state/secrets/redis)",
+      "about": {
+        "id": "Penyimpanan key-value di memori, untuk cache dan sesi login.",
+        "en": "An in-memory key-value store, for cache and login sessions."
+      },
+      "web": [],
+      "ports": [
+        {
+          "port": 6379,
+          "use": "Redis"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/redis"
+      ],
+      "backup": "paused",
+      "health": "redis-cli ping",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
+          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
+        }
+      ],
+      "images": [
+        {
+          "key": "redis",
+          "repo": "docker.io/library/redis",
+          "tag": "8.10.3",
+          "digest": "298641b35ac5"
+        }
+      ],
+      "version": "8.10.3"
+    },
+    {
+      "name": "rustfs",
+      "category": "storage",
+      "license": "Apache-2.0",
+      "cluster": false,
+      "nodes": [
+        "server1"
+      ],
+      "primary_ip": "10.10.0.10",
+      "ha": false,
+      "known": true,
+      "info": "S3 http://10.10.0.10:9000 (keys state/secrets/rustfs_access_key, rustfs_secret_key), console https://rustfs.maju.example.id/rustfs/console/ (needs traefik)",
+      "about": {
+        "id": "Penyimpanan file kompatibel S3 untuk aplikasi Anda.",
+        "en": "S3-compatible file storage for your apps."
+      },
+      "web": [
+        {
+          "host": "rustfs",
+          "path": "/rustfs/console/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://rustfs.maju.example.id/rustfs/console/"
+        }
+      ],
+      "ports": [
+        {
+          "port": 9000,
+          "use": "S3"
+        }
+      ],
+      "data": [
+        "/opt/ansibro/rustfs"
+      ],
+      "backup": "live",
+      "health": "TCP 9000",
+      "laptop": "tunnel",
+      "notes": [
+        {
+          "id": "Region S3 adalah us-east-1.",
+          "en": "The S3 region is us-east-1."
+        }
+      ],
+      "images": [
+        {
+          "key": "rustfs",
+          "repo": "docker.io/rustfs/rustfs",
+          "tag": "1.0.4",
+          "digest": "ed9210d6411d"
+        }
+      ],
+      "version": "1.0.4"
+    },
+    {
+      "name": "traefik",
+      "category": "gateway",
+      "license": "MIT",
+      "cluster": true,
+      "nodes": [],
+      "primary_ip": "",
+      "ha": false,
+      "known": true,
+      "info": "https://traefik.maju.example.id (user admin, password state/secrets/traefik_admin)",
+      "about": {
+        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
+        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
+      },
+      "web": [
+        {
+          "host": "traefik",
+          "path": "/dashboard/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://traefik.maju.example.id/dashboard/"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/traefik"
+      ],
+      "backup": "paused",
+      "health": "traefik healthcheck --ping",
+      "laptop": "web",
+      "notes": [],
+      "images": [
+        {
+          "key": "traefik",
+          "repo": "docker.io/library/traefik",
+          "tag": "v3.7.17",
+          "digest": "30ff62491aac"
+        }
+      ],
+      "version": "v3.7.17"
+    },
+    {
+      "name": "victoria",
+      "category": "monitoring",
+      "license": "Apache-2.0 (VictoriaMetrics, VictoriaLogs, Alertmanager), AGPL-3.0 (Grafana)",
+      "cluster": false,
+      "nodes": [
+        "server1"
+      ],
+      "primary_ip": "10.10.0.10",
+      "ha": false,
+      "known": true,
+      "info": "Grafana https://grafana.maju.example.id (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.maju.example.id, metrics https://metrics.maju.example.id/vmui, logs https://logs.maju.example.id/select/vmui",
+      "about": {
+        "id": "Pemantauan lengkap. Metrik, log, aturan peringatan, Grafana, dan peringatan ke Telegram, email, atau webhook.",
+        "en": "Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook."
+      },
+      "web": [
+        {
+          "host": "grafana",
+          "path": "/",
+          "guard": "admin-ip",
+          "login": "own",
+          "url": "https://grafana.maju.example.id/"
+        },
+        {
+          "host": "alertmanager",
+          "path": "/",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://alertmanager.maju.example.id/"
+        },
+        {
+          "host": "metrics",
+          "path": "/vmui",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://metrics.maju.example.id/vmui"
+        },
+        {
+          "host": "logs",
+          "path": "/select/vmui",
+          "guard": "admin",
+          "login": "layer",
+          "url": "https://logs.maju.example.id/select/vmui"
+        }
+      ],
+      "ports": [],
+      "data": [
+        "/opt/ansibro/victoria",
+        "/opt/ansibro/monitoring-agent"
+      ],
+      "backup": "partial",
+      "health": "Watchdog alert",
+      "laptop": "web",
+      "notes": [
+        {
+          "id": "Riwayat metrik dan log tidak ikut di-backup; yang di-backup adalah pengaturan, Grafana, dan Alertmanager.",
+          "en": "The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are."
+        }
+      ],
+      "images": [
+        {
+          "key": "victoriametrics",
+          "repo": "docker.io/victoriametrics/victoria-metrics",
+          "tag": "v1.155.0",
+          "digest": "f60dc268b54e"
+        },
+        {
+          "key": "victorialogs",
+          "repo": "docker.io/victoriametrics/victoria-logs",
+          "tag": "v1.53.0",
+          "digest": "251121fa882a"
+        },
+        {
+          "key": "vmalert",
+          "repo": "docker.io/victoriametrics/vmalert",
+          "tag": "v1.155.0",
+          "digest": "3256cba5ddac"
+        },
+        {
+          "key": "alertmanager",
+          "repo": "docker.io/prom/alertmanager",
+          "tag": "v0.34.2",
+          "digest": "39d8bb3966c6"
+        },
+        {
+          "key": "grafana",
+          "repo": "docker.io/grafana/grafana",
+          "tag": "13.2.5",
+          "digest": "9f7aa1e1e324"
+        }
+      ],
+      "version": "v1.155.0"
+    }
+  ],
+  "components": [
+    {
+      "name": "registry",
+      "where": "managers",
+      "port": 5000,
+      "version": "3.1.2",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
+        "en": "A private image registry on every manager. All servers pull images from it."
+      }
+    },
+    {
+      "name": "monitoring-agents",
+      "where": "every server",
+      "port": 9100,
+      "version": "v1.12.1",
+      "license": "Apache-2.0",
+      "about": {
+        "id": "node-exporter, cAdvisor, Vector, dan exporter database di setiap server, plus timer ansibro-metrics.",
+        "en": "node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer."
+      }
+    },
+    {
+      "name": "backup",
+      "where": "every server",
+      "port": null,
+      "version": "",
+      "license": "BSD-2-Clause",
+      "about": {
+        "id": "Timer ansibro-backup dengan restic setiap malam di setiap server.",
+        "en": "The ansibro-backup timer with restic, every night on every server."
+      }
+    }
+  ],
+  "backup": {
+    "enabled": true,
+    "kind": "s3",
+    "host": "s3.example.id",
+    "where": "https://s3.example.id/maju-backup",
+    "time": "02:00",
+    "keep": {
+      "daily": 7,
+      "weekly": 4,
+      "monthly": 6
+    }
+  },
+  "monitoring": {
+    "app": "victoria",
+    "channels": [
+      {
+        "kind": "telegram"
+      }
+    ],
+    "heartbeat": null,
+    "keep_days": 30,
+    "uptimekuma": false
+  },
+  "alerts": [
+    {
+      "group": "monitoring",
+      "name": "TargetDown",
+      "severity": "critical",
+      "for": "3m",
+      "summary": "<job> on <node> (<instance>) does not answer."
+    },
+    {
+      "group": "monitoring",
+      "name": "AlertsNotSent",
+      "severity": "warning",
+      "for": "",
+      "summary": "Alertmanager could not send alerts to <integration>. Check monitoring: in config.yml."
+    },
+    {
+      "group": "monitoring",
+      "name": "AlertRulesFailing",
+      "severity": "warning",
+      "for": "",
+      "summary": "Some alert rules cannot be checked, so their alerts would not fire."
+    },
+    {
+      "group": "monitoring",
+      "name": "MetricsScriptNotRunning",
+      "severity": "warning",
+      "for": "",
+      "summary": "ansibro-metrics did not run on <node> for 5 minutes. App, backup and swarm checks there are blind."
+    },
+    {
+      "group": "monitoring",
+      "name": "LogsNotSent",
+      "severity": "warning",
+      "for": "",
+      "summary": "The log agent on <node> cannot send logs to the monitoring server."
+    },
+    {
+      "group": "servers",
+      "name": "NodeDown",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "Server <node> is down or cannot be reached."
+    },
+    {
+      "group": "servers",
+      "name": "NodeRebooted",
+      "severity": "warning",
+      "for": "",
+      "summary": "Server <node> restarted."
+    },
+    {
+      "group": "servers",
+      "name": "DiskAlmostFull",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "Disk <mountpoint> on <node> is … full."
+    },
+    {
+      "group": "servers",
+      "name": "DiskFull",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "Disk <mountpoint> on <node> is … full."
+    },
+    {
+      "group": "servers",
+      "name": "DiskFillsSoon",
+      "severity": "warning",
+      "for": "30m",
+      "summary": "At this speed, disk <mountpoint> on <node> is full within a day."
+    },
+    {
+      "group": "servers",
+      "name": "InodesAlmostFull",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "Disk <mountpoint> on <node> has almost no free inodes (too many small files)."
+    },
+    {
+      "group": "servers",
+      "name": "MemoryAlmostFull",
+      "severity": "warning",
+      "for": "10m",
+      "summary": "Memory on <node> is … used."
+    },
+    {
+      "group": "servers",
+      "name": "OutOfMemoryKill",
+      "severity": "warning",
+      "for": "",
+      "summary": "Linux stopped a program on <node> because memory was full."
+    },
+    {
+      "group": "servers",
+      "name": "CpuBusy",
+      "severity": "warning",
+      "for": "15m",
+      "summary": "CPU on <node> is … busy for 15 minutes."
+    },
+    {
+      "group": "servers",
+      "name": "ClockNotSynced",
+      "severity": "warning",
+      "for": "10m",
+      "summary": "The clock on <node> is not in sync. Certificates, logins and the swarm need the right time."
+    },
+    {
+      "group": "servers",
+      "name": "SystemdServiceFailed",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "… system service(s) failed on <node>. Run: systemctl --failed"
+    },
+    {
+      "group": "apps",
+      "name": "AppDown",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "<app> on <node> does not answer on port <port>."
+    },
+    {
+      "group": "apps",
+      "name": "ContainerDown",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "Container <container> on <node> is not running."
+    },
+    {
+      "group": "apps",
+      "name": "ContainerRestarting",
+      "severity": "warning",
+      "for": "",
+      "summary": "Container <container> on <node> restarted … times in 15 minutes."
+    },
+    {
+      "group": "apps",
+      "name": "ContainerOutOfMemory",
+      "severity": "warning",
+      "for": "",
+      "summary": "Container <container> on <node> was stopped because it used too much memory."
+    },
+    {
+      "group": "apps",
+      "name": "SwarmServiceDown",
+      "severity": "critical",
+      "for": "5m",
+      "summary": "Swarm service <service> runs … of its tasks. Run: docker service ps <service>"
+    },
+    {
+      "group": "apps",
+      "name": "SwarmNodeDown",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "Swarm says server <swarm_node> is not ready."
+    },
+    {
+      "group": "apps",
+      "name": "WebAppDown",
+      "severity": "critical",
+      "for": "3m",
+      "summary": "Traefik cannot reach <service> (<url>)."
+    },
+    {
+      "group": "apps",
+      "name": "WebAppErrors",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "… of the requests to <service> fail with a 5xx error."
+    },
+    {
+      "group": "apps",
+      "name": "CertificateEndsSoon",
+      "severity": "warning",
+      "for": "",
+      "summary": "The certificate for <sans> ends in … days."
+    },
+    {
+      "group": "backup",
+      "name": "BackupTooOld",
+      "severity": "critical",
+      "for": "30m",
+      "summary": "The last good backup of <node> is older than 26 hours. Run: journalctl -u ansibro-backup"
+    },
+    {
+      "group": "databases",
+      "name": "PostgresDown",
+      "severity": "critical",
+      "for": "1m",
+      "summary": "PostgreSQL on <node> does not answer the exporter."
+    },
+    {
+      "group": "databases",
+      "name": "PostgresTooManyConnections",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "PostgreSQL on <node> uses … of its connections."
+    },
+    {
+      "group": "databases",
+      "name": "PostgresNoPrimary",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "No PostgreSQL server is the primary: apps cannot write. Check: sudo docker exec postgres patronictl list"
+    },
+    {
+      "group": "databases",
+      "name": "PostgresReplicaBehind",
+      "severity": "warning",
+      "for": "10m",
+      "summary": "The PostgreSQL replica on <node> is … behind the primary."
+    },
+    {
+      "group": "databases",
+      "name": "CacheDown",
+      "severity": "critical",
+      "for": "1m",
+      "summary": "<job> on <node> does not answer the exporter."
+    },
+    {
+      "group": "databases",
+      "name": "CacheNoPrimary",
+      "severity": "critical",
+      "for": "2m",
+      "summary": "No cache server is the primary: apps cannot write. Check: sudo docker exec valkey-sentinel valkey-cli -p 26379 SENTINEL masters"
+    },
+    {
+      "group": "databases",
+      "name": "CacheMemoryFull",
+      "severity": "warning",
+      "for": "5m",
+      "summary": "<job> on <node> uses … of its memory limit."
+    },
+    {
+      "group": "databases",
+      "name": "CacheRejectsConnections",
+      "severity": "warning",
+      "for": "",
+      "summary": "<job> on <node> refused connections (too many clients)."
+    }
+  ],
+  "secrets": [
+    {
+      "name": "grafana_admin",
+      "status": "present",
+      "app": "victoria",
+      "change": "app",
+      "audience": "client",
+      "verified": false,
+      "group": "web",
+      "title": "Grafana",
+      "user": "admin"
+    },
+    {
+      "name": "monitor",
+      "status": "present",
+      "app": "victoria",
+      "change": "file",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "monitor",
+      "user": ""
+    },
+    {
+      "name": "portainer_admin",
+      "status": "present",
+      "app": "portainer",
+      "change": "app",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Portainer",
+      "user": "admin"
+    },
+    {
+      "name": "portainer_agent_secret",
+      "status": "present",
+      "app": "portainer",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "portainer_agent_secret",
+      "user": ""
+    },
+    {
+      "name": "postgres",
+      "status": "present",
+      "app": "postgres",
+      "change": "both",
+      "audience": "client",
+      "verified": false,
+      "group": "data",
+      "title": "PostgreSQL",
+      "user": "postgres"
+    },
+    {
+      "name": "postgres_replication",
+      "status": "present",
+      "app": "postgres",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "postgres_replication",
+      "user": ""
+    },
+    {
+      "name": "redis",
+      "status": "present",
+      "app": "redis",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "data",
+      "title": "Redis",
+      "user": ""
+    },
+    {
+      "name": "registry",
+      "status": "present",
+      "app": "registry",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "infra",
+      "title": "Image registry",
+      "user": "ansibro"
+    },
+    {
+      "name": "restic",
+      "status": "present",
+      "app": "backup",
+      "change": "both",
+      "audience": "recovery",
+      "verified": true,
+      "group": "recovery",
+      "title": "Backup (restic)",
+      "user": ""
+    },
+    {
+      "name": "rustfs_access_key",
+      "status": "present",
+      "app": "rustfs",
+      "change": "file",
+      "audience": "client",
+      "verified": false,
+      "group": "storage",
+      "title": "RustFS S3",
+      "user": "… (access key)"
+    },
+    {
+      "name": "rustfs_secret_key",
+      "status": "present",
+      "app": "rustfs",
+      "change": "file",
+      "audience": "client",
+      "verified": false,
+      "group": "storage",
+      "title": "RustFS S3",
+      "user": "… (access key)"
+    },
+    {
+      "name": "traefik_admin",
+      "status": "present",
+      "app": "traefik",
+      "change": "file",
+      "audience": "client",
+      "verified": true,
+      "group": "web",
+      "title": "Traefik",
+      "user": "admin"
+    },
+    {
+      "name": "traefik_salt",
+      "status": "present",
+      "app": "traefik",
+      "change": "internal",
+      "audience": "internal",
+      "verified": true,
+      "group": "internal",
+      "title": "traefik_salt",
+      "user": ""
+    }
+  ],
+  "config_secrets": [
+    "backup.s3_access_key",
+    "backup.s3_secret_key",
+    "monitoring.telegram.bot_token"
+  ],
+  "tunnels": [
+    {
+      "app": "postgres",
+      "use": "PostgreSQL",
+      "node": "server1",
+      "ip": "10.10.0.10",
+      "port": 5432,
+      "local": 15432
+    },
+    {
+      "app": "redis",
+      "use": "Redis",
+      "node": "server1",
+      "ip": "10.10.0.10",
+      "port": 6379,
+      "local": 16379
+    },
+    {
+      "app": "rustfs",
+      "use": "S3",
+      "node": "server1",
+      "ip": "10.10.0.10",
+      "port": 9000,
+      "local": 19000
+    }
+  ],
+  "tls_cert": null,
+  "versions": {
+    "docker": [
+      "docker-ce 29.9.2-1",
+      "docker-ce-cli 29.9.2-1",
+      "containerd.io 2.4.2-3",
+      "docker-buildx-plugin 0.38.1-1",
+      "docker-compose-plugin 5.6.1-1"
+    ],
+    "k3s": null
+  },
+  "warnings": [],
+  "sources": {
+    "nodes, apps, domain, tls, ssh, allow-lists, backup, monitoring, versions": "inventory.py --list",
+    "traefik_nodes, admin_sso, database, cache, monitoring app": "group_vars/all.yml (ansible debug)",
+    "alerts": "roles/observability/files/alerts.yml",
+    "pages, ports, data, backup kind, change of passwords": "dejavu assets/apps.yml",
+    "secret names": "state/secrets (names only)",
+    "last install": "the date of state/summary.md (never opened)",
+    "ansibro version": "git describe / CHANGELOG.md"
+  }
+}

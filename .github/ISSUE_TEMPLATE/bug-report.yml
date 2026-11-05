@@ -1,20 +1,27 @@
 name: Bug report
-description: dejavu did not install, remove or find something
+description: dejavu made a wrong document, or stopped with an error
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: "**Never paste a password, the .kdbx file, state/, or a real client's documents or facts.json.**"
   - type: textarea
     id: what
     attributes:
       label: What happened?
-      description: The dejavu command, and its output. An AI agent can paste this for you.
+      description: The handover.py command, and its output lines (ok, warning, needs the user, failed). They contain no passwords. An AI agent can paste them for you.
       render: text
     validations:
       required: true
   - type: textarea
     id: doctor
     attributes:
-      label: Output of `dejavu doctor`
-      description: It shows your system, package manager and mise version. No passwords or tokens are in it.
+      label: Output of the doctor command
+      description: ".venv/bin/python <skill>/scripts/handover.py doctor: your system, the ansibro version and the tools."
       render: text
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should the document say instead?

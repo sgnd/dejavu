@@ -1,0 +1,83 @@
+{
+  "manager1": {
+    "reached": true,
+    "vcpu": 2,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:manager1TestFingerprintDoNotTrust0000000000"
+  },
+  "manager2": {
+    "reached": true,
+    "vcpu": 2,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:manager2TestFingerprintDoNotTrust0000000000"
+  },
+  "manager3": {
+    "reached": true,
+    "vcpu": 2,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:manager3TestFingerprintDoNotTrust0000000000"
+  },
+  "worker1": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:worker1TestFingerprintDoNotTrust00000000000"
+  },
+  "worker2": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:worker2TestFingerprintDoNotTrust00000000000"
+  },
+  "worker3": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 4.0,
+    "disk_gb": 80,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:worker3TestFingerprintDoNotTrust00000000000"
+  },
+  "data1": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 8.0,
+    "disk_gb": 160,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:data1TestFingerprintDoNotTrust0000000000000"
+  },
+  "data2": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 8.0,
+    "disk_gb": 160,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:data2TestFingerprintDoNotTrust0000000000000"
+  },
+  "data3": {
+    "reached": true,
+    "vcpu": 4,
+    "ram_gb": 8.0,
+    "disk_gb": 160,
+    "os": "Ubuntu 24.04",
+    "kernel": "6.8.0-88-generic",
+    "fingerprint": "SHA256:data3TestFingerprintDoNotTrust0000000000000"
+  }
+}

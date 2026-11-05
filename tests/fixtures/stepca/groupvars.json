@@ -1,0 +1,18 @@
+{
+ "admin_sso": "",
+ "cache_app": "valkey",
+ "cache_ha": false,
+ "database_app": "mariadb",
+ "database_ha": false,
+ "database_host": "192.168.50.21",
+ "database_port": 3306,
+ "mariadb_galera": false,
+ "monitoring_app": "",
+ "postgres_patroni": false,
+ "registry_addr": "registry.ansibro:5000",
+ "swarm_app_constraint": "node.labels.tier == app",
+ "swarm_leader": "app1",
+ "traefik_nodes": [
+  "app1"
+ ]
+}

@@ -1,0 +1,37 @@
+lang: [id, en]
+environment: Produksi
+document: {number: 001/DOK/NUSA/XI/2026, version: "1.0", prepared_by: Rina Wijaya, reviewed_by: Andi Saputra, approved_by: Dewi Lestari, revisions: [{version: "1.0", date: 2026-11-04, by: Rina Wijaya, change: Terbitan pertama}]}
+bast:
+  number: 001/BAST/NUSA/XI/2026
+  date: 2026-11-04
+  place: Jakarta
+  stage: single
+  contract: {name: Pembangunan Platform Aplikasi, number: SPK-017/MAJU/IX/2026, date: 2026-09-01}
+  first_party: vendor
+  meterai: {enabled: true, side: client}
+  copies: 2
+  mengetahui: [{name: Hendra Gunawan, title: Direktur TI, company: PT Maju Bersama}]
+  witnesses: []
+client: {name: PT Maju Bersama, short: Maju, address: "Jl. Sudirman No. 1, Jakarta", logo: null, signer: {name: Siti Rahma, title: Kepala Infrastruktur}}
+vendor: {name: PT Nusantara Teknologi, short: Nusa, address: "Jl. Gatot Subroto No. 9, Jakarta", logo: null, phone: "+62 21 555 0101", email: support@nusa.example, website: https://nusa.example, signer: {name: Rina Wijaya, title: Project Manager}}
+servers:
+  manager1: {public_ip: null, provider: DigitalOcean, region: SGP1}
+provider: DigitalOcean
+dns: {mode: public, provider: Cloudflare, owner: PT Maju Bersama, proxied: false}
+people:
+  - {name: Budi Santoso, persona: operator, os: windows, allow_from: [198.51.100.7]}
+  - {name: Siti Rahma, persona: viewer, os: macos, allow_from: [198.51.100.0/24]}
+  - {name: Joko Prasetyo, persona: successor, os: linux, allow_from: [203.0.113.200]}
+ssh_handover: generated
+state_owner: client
+password_change_days: 7
+vendor_access_end: 2026-12-04
+delivery: {kdbx_channel: USB diserahkan langsung, passphrase_channel: telepon, recipient: Siti Rahma}
+support: {contacts: [{name: Rina Wijaya, role: Project Manager, phone: "+62 812 0000 1111", email: rina@nusa.example}], hours: "Senin-Jumat 09.00-17.00 WIB", sla: Respons dalam 4 jam kerja, warranty: {months: 3, until: 2027-02-04, scope: Perbaikan kesalahan konfigurasi dari pekerjaan ini}}
+restore_drill: 2026-11-02
+summary_note: null
+known_issues: ["Notifikasi Uptime Kuma diatur klien setelah serah terima."]
+out_of_scope: [Aplikasi bisnis milik klien]
+extra_apps: []
+notes: []
+attach: []
