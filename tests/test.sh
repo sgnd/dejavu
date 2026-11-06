@@ -242,7 +242,7 @@ expect 2 env DEJAVU_TEST= "$PY" "$H" facts --ansibro "$TMP/swarm-1-server/ansibr
 # --- ansibro 1.3+: state/handover.json replaces the ansible call, with the same facts ---
 # Usage: same_facts CASE -> facts.json equals the golden one, apart from where the values came from
 same_facts() {
-  "$PY" - "$SRC/tests/golden/$1/facts.json" "$TMP/$1/out/facts.json" <<'PYEOF' && pass || fail "$1: facts from state/handover.json differ"
+  if "$PY" - "$SRC/tests/golden/$1/facts.json" "$TMP/$1/out/facts.json" <<'PYEOF'
 import json, sys
 want, got = (json.load(open(p)) for p in sys.argv[1:])
 src = got["sources"].pop("traefik_nodes, admin_sso, database, cache, monitoring app")
@@ -251,6 +251,7 @@ if src != "state/handover.json" or want != got:
     print("    source:", src)
     sys.exit(1)
 PYEOF
+  then pass; else fail "$1: facts from state/handover.json differ"; fi
 }
 # Usage: handover_json CASE [APPS-EXTRA] -> writes state/handover.json the way ansibro does
 handover_json() {
