@@ -33,7 +33,7 @@ def main(ansibro):
                     shutil.copy(os.path.join(src, f), work)
             ab = handover.Ansibro(work, "config.yml")
             inv = ab.inventory()
-            gv = ab.group_vars()
+            gv = ab.group_vars_debug()
             for name, value in (("inventory.json", inv), ("groupvars.json", gv)):
                 text = json.dumps(value, indent=1, sort_keys=True).replace(work, "@ANSIBRO@")
                 with open(os.path.join(src, name), "w", encoding="utf-8") as fh:
