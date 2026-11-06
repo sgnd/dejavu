@@ -194,21 +194,59 @@ class Ansibro:
             failed("config", (r.stderr or r.stdout).strip() or "inventory.py failed")
         return json.loads(r.stdout)
 
-    def group_vars(self, recorded=None):
-        """ansibro's own rules (traefik_nodes, admin_sso, ...) through one debug call.
+    GV_NAMES = ["traefik_nodes", "admin_sso", "database_app", "database_ha", "database_host", "database_port",
+                "postgres_patroni", "mariadb_galera", "cache_app", "cache_ha", "monitoring_app",
+                "swarm_app_constraint", "registry_addr"]
+
+    def handover_json(self):
+        """state/handover.json (ansibro 1.3 and newer): the facts of the last install, no passwords.
+        None when this ansibro does not write it."""
+        mode = self.state_mode()
+        try:
+            if mode == "plain":
+                p = os.path.join(self.state, "handover.json")
+                if not os.path.isfile(p):
+                    return None
+                with open(p, encoding="utf-8") as f:
+                    data = json.load(f)
+            elif mode == "age":
+                raw = self._age_members(lambda n: n == "state/handover.json").get("state/handover.json")
+                if raw is None:
+                    return None
+                data = json.loads(raw)
+            else:
+                return None
+        except ValueError:
+            return {"_invalid": True}
+        return data if isinstance(data, dict) else {"_invalid": True}
+
+    def group_vars(self, inv, recorded=None):
+        """ansibro's own rules (traefik_nodes, admin_sso, ...): from state/handover.json when it is
+        there and matches the config, else through one ansible debug call.
+        Returns (values, source, warnings)."""
+        if recorded:
+            return load_json(recorded, self.dir), "recorded", []
+        hj = self.handover_json()
+        why = handover_json_mismatch(hj, inv) if hj is not None else None
+        if hj is not None and not why:
+            return {n: hj.get(n) for n in self.GV_NAMES}, "state/handover.json", []
+        warns = [{"id": "handover-json-outdated", "reason": why}] if hj is not None else []
+        return self.group_vars_debug(), "group_vars/all.yml (ansible debug)", warns
+
+    def group_vars_debug(self):
+        """The same values through one debug call (ansibro without state/handover.json).
         The debug module does not connect anywhere, so no SSH. secrets_dir points to an empty
         temporary folder, so even a mistaken password lookup cannot write into state/."""
-        if recorded:
-            return load_json(recorded, self.dir)
-        names = ["swarm_leader", "traefik_nodes", "admin_sso", "database_app", "database_ha", "database_host",
-                 "database_port", "postgres_patroni", "mariadb_galera", "cache_app", "cache_ha", "monitoring_app",
-                 "swarm_app_constraint", "registry_addr"]
+        names = self.GV_NAMES
         expr = "{{ {" + ", ".join(f'"{n}": {n}' for n in names) + "} }}"
         before = self.state_listing()
         with tempfile.TemporaryDirectory() as tmp:
             ansible = os.path.join(self.venv_bin, "ansible")
             if not os.path.exists(ansible):
                 ansible = shutil.which("ansible") or ansible
+            if not os.path.exists(ansible):
+                failed("ansible", "this ansibro has no state/handover.json (or an outdated one), and ansible is not "
+                       "installed here. Run dejavu with ansibro's .venv/bin/python, or run ./install.sh again.")
             r = run([ansible, "managers[0]", "-m", "ansible.builtin.debug", "-e", f"secrets_dir={tmp}",
                      "-a", f"msg={expr}"], cwd=self.dir, env=self.env())
             wrote = os.listdir(tmp)
@@ -349,6 +387,21 @@ class Ansibro:
                 failed("state-close", "could not encrypt state/ again. Run scripts/state.sh close now. " + r.stderr.strip())
 
 
+def handover_json_mismatch(hj, inv):
+    """Why state/handover.json cannot be used with this config (None when it can): it is broken,
+    or the config changed after the last install (other servers or other apps)."""
+    if hj.get("_invalid"):
+        return "not valid JSON"
+    missing = [n for n in Ansibro.GV_NAMES + ["nodes", "apps"] if n not in hj]
+    if missing:
+        return "missing " + ", ".join(missing)
+    if sorted(n.get("name") for n in hj["nodes"]) != sorted(inv["_meta"]["hostvars"]):
+        return "other servers than config"
+    if sorted(hj["apps"]) != sorted(inv["all"]["vars"]["apps"]):
+        return "other apps than config"
+    return None
+
+
 def load_json(path, ansibro=None):
     with open(path, encoding="utf-8") as f:
         text = f.read()
@@ -402,11 +455,10 @@ def matches(cond, f):
 def build_facts(ab, args, data):
     """Everything the documents say about the system, without a single secret value."""
     inv = ab.inventory(getattr(args, "inventory_json", None))
-    gv = ab.group_vars(getattr(args, "groupvars_json", None))
+    gv, gv_source, warnings = ab.group_vars(inv, getattr(args, "groupvars_json", None))
     cfg = inv["all"]["vars"]
     hosts = inv["_meta"]["hostvars"]
     known = data["apps"]
-    warnings = []
 
     def warn(ident, **kw):
         warnings.append({"id": ident, **kw})
@@ -661,7 +713,8 @@ def build_facts(ab, args, data):
         "warnings": warnings,
         "sources": {
             "nodes, apps, domain, tls, ssh, allow-lists, backup, monitoring, versions": "inventory.py --list",
-            "traefik_nodes, admin_sso, database, cache, monitoring app": "group_vars/all.yml (ansible debug)",
+            "traefik_nodes, admin_sso, database, cache, monitoring app":
+                gv_source if gv_source != "recorded" else "group_vars/all.yml (ansible debug)",
             "alerts": "roles/observability/files/alerts.yml",
             "pages, ports, data, backup kind, change of passwords": "dejavu assets/apps.yml",
             "secret names": "state/secrets (names only)" if ab.state_mode() != "age" else "state.age (names only)",

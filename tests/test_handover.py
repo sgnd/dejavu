@@ -69,6 +69,18 @@ class Facts(unittest.TestCase):
         self.assertEqual(h.webhook_kind("https://discord.com/api/webhooks/x"), "discord")
         self.assertEqual(h.webhook_kind("https://example.com/hook"), "webhook")
 
+    def test_handover_json_mismatch(self):
+        inv = {"_meta": {"hostvars": {"srv": {}, "db": {}}}, "all": {"vars": {"apps": {"postgres": "db"}}}}
+        hj = {**dict.fromkeys(h.Ansibro.GV_NAMES), "nodes": [{"name": "db"}, {"name": "srv"}],
+              "apps": {"postgres": {}}}
+        self.assertIsNone(h.handover_json_mismatch(hj, inv))
+        self.assertEqual(h.handover_json_mismatch({**hj, "apps": {}}, inv), "other apps than config")
+        self.assertEqual(h.handover_json_mismatch({**hj, "nodes": [{"name": "srv"}]}, inv), "other servers than config")
+        self.assertEqual(h.handover_json_mismatch({"_invalid": True}, inv), "not valid JSON")
+        broken = dict(hj)
+        del broken["admin_sso"]
+        self.assertEqual(h.handover_json_mismatch(broken, inv), "missing admin_sso")
+
     def test_version_range(self):
         self.assertTrue(h.in_range("1.2.0", ">=1.2.0 <2"))
         self.assertTrue(h.in_range("1.9.3", ">=1.2.0 <2"))

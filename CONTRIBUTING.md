@@ -19,7 +19,8 @@ A change fits when all of these are true:
 
 ```text
 handover.py build
-  facts      ansibro's inventory.py --list, one ansible debug call (group_vars rules, no SSH),
+  facts      ansibro's inventory.py --list, state/handover.json (ansibro 1.3+; else one ansible
+             debug call for the group_vars rules, no SSH),
              alerts.yml, CHANGELOG.md, state/secrets names  +  assets/apps.yml   -> facts.json
   render     assets/<lang>/*.md.j2 with facts.json + handover.yml (the answers)  -> dist/<lang>/*.md
   scan       every secret value and pattern searched in every text file           (stops with exit 5)

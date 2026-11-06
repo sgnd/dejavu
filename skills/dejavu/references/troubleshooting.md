@@ -23,6 +23,7 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `unknown-app` | An app dejavu does not know (a newer ansibro). | The documents use ansibro's own short text. Ask the user for a sentence about it and put it in `extra_apps`. |
 | `not-documented` | A setting in `config.yml` that dejavu does not know. | It is left out of the documents. Report it so dejavu learns it. |
 | `ansibro-untested-version` | ansibro is newer or older than the versions this skill was tested with. | The documents are still made; read them carefully. |
+| `handover-json-outdated` | ansibro's `state/handover.json` does not match `config.yml` (other servers or apps): the config changed after the last install. dejavu read the settings through ansible instead. | Ask whether the change was meant to be installed. If yes, run `./install.sh` (with consent) before the handover; if not, undo it in `config.yml`. |
 | `ansibro-dirty` | The ansibro folder has changes that are not committed. | Check that what was installed is what is in the folder. |
 | `shared-state` | There are several `config*.yml` here, sharing one state/. | Make sure `--config` names the one this handover is about. |
 | `weak-secret` | A password in `config.yml` (backup or alerts) is shorter than 6 characters, so the leak check cannot search for it. | Recommend a longer one. |

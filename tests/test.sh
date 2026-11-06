@@ -239,5 +239,64 @@ has "only in a real terminal"
 # Test-only flags are refused outside the tests.
 expect 2 env DEJAVU_TEST= "$PY" "$H" facts --ansibro "$TMP/swarm-1-server/ansibro" --out "$TMP/x" --inventory-json /dev/null
 
+# --- ansibro 1.3+: state/handover.json replaces the ansible call, with the same facts ---
+# Usage: same_facts CASE -> facts.json equals the golden one, apart from where the values came from
+same_facts() {
+  if "$PY" - "$SRC/tests/golden/$1/facts.json" "$TMP/$1/out/facts.json" <<'PYEOF'
+import json, sys
+want, got = (json.load(open(p)) for p in sys.argv[1:])
+src = got["sources"].pop("traefik_nodes, admin_sso, database, cache, monitoring app")
+want["sources"].pop("traefik_nodes, admin_sso, database, cache, monitoring app")
+if src != "state/handover.json" or want != got:
+    print("    source:", src)
+    sys.exit(1)
+PYEOF
+  then pass; else fail "$1: facts from state/handover.json differ"; fi
+}
+# Usage: handover_json CASE [APPS-EXTRA] -> writes state/handover.json the way ansibro does
+handover_json() {
+  "$PY" - "$SRC/tests/fixtures/$1" "$TMP/$1/ansibro/state/handover.json" "${2:-}" <<'PYEOF'
+import json, os, sys
+case, dest, extra = sys.argv[1:]
+inv = json.load(open(os.path.join(case, "inventory.json")))
+gv = json.load(open(os.path.join(case, "groupvars.json")))
+gv.pop("swarm_leader", None)
+apps = dict.fromkeys(inv["all"]["vars"]["apps"], {})
+if extra:
+    apps[extra] = {}
+nodes = [{"name": n} for n in inv["_meta"]["hostvars"]]
+json.dump({"ansibro_version": "1.3.0", "nodes": nodes, "apps": apps, "secret_files": [], **gv}, open(dest, "w"))
+PYEOF
+}
+facts_only() {
+  "$PY" "$H" facts --ansibro "$TMP/$1/ansibro" --out "$TMP/$1/out" --inventory-json "$SRC/tests/fixtures/$1/inventory.json"
+}
+for c in swarm-ha k3s-ha; do
+  system "$c"
+  handover_json "$c"
+  expect 0 facts_only "$c"
+  same_facts "$c"
+done
+# Encrypted state: handover.json is read from state.age, in memory.
+if command -v age-keygen >/dev/null 2>&1; then
+  system swarm-ha
+  handover_json swarm-ha
+  chmod 600 "$TMP/swarm-ha/ansibro/state/summary.md"
+  age-keygen -o "$TMP/age.key" 2>/dev/null
+  (cd "$TMP/swarm-ha/ansibro" && tar -cf - state | age -r "$(age-keygen -y "$TMP/age.key")" >state.age && rm -rf state)
+  expect 0 env ANSIBRO_KEY="$TMP/age.key" "$PY" "$H" facts --ansibro "$TMP/swarm-ha/ansibro" --out "$TMP/swarm-ha/out" \
+    --inventory-json "$SRC/tests/fixtures/swarm-ha/inventory.json"
+  has "facts.json"
+  if grep -qF '"state/handover.json"' "$TMP/swarm-ha/out/facts.json"; then pass; else fail "state.age: handover.json not used"; fi
+fi
+# The config changed after the install (an app added): handover.json is not used, and dejavu says so.
+# (Where ansible is installed, dejavu falls back to it instead: only checked where it is not.)
+system minimal
+handover_json minimal uptimekuma
+if ! command -v ansible >/dev/null 2>&1 && [ ! -x "$(dirname "$("$PY" -c 'import sys; print(sys.executable)')")/ansible" ]; then
+  expect 1 facts_only minimal
+  has "ansible is not installed"
+fi
+
 echo "=== dejavu tests: $passed passed, $failed failed"
 [ "$failed" = 0 ]

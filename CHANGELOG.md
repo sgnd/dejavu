@@ -2,6 +2,12 @@
 
 Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `install.sh` installs the newest one.
 
+## Unreleased
+
+- With ansibro 1.3 and newer, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
+- When `state/handover.json` no longer matches `config.yml` (other servers or apps), `facts` warns `handover-json-outdated`: the config changed after the last install.
+- A clear message when ansible is needed but not installed.
+
 ## 1.0.0
 
 dejavu is now an agent skill that hands a server system built with ansibro over to a client.
