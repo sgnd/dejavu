@@ -180,5 +180,115 @@ class Answers(unittest.TestCase):
         self.assertEqual(a["lang"], ["id"])
 
 
+class Doctor(unittest.TestCase):
+    """doctor --fix: what it installs by itself, and that it never runs sudo. Every command is faked."""
+
+    def setUp(self):
+        self.ran = []
+        self.saved = (h.run, h.shutil.which, h.sys.platform, h.find_keepassxc, h.find_tool, h.find_mise,
+                      h.Ansibro.check_folder, h.Ansibro.version, h.Ansibro.state_mode,
+                      h.MISE_PLACES, h.BREW_PLACES, h.AGE_PLACES, h.KEEPASSXC_APP)
+        self.kp = None  # keepassxc-cli path once "installed"
+
+        def run(cmd, **kw):
+            self.ran.append(list(cmd))
+            if cmd[:3] == ["/opt/homebrew/bin/brew", "install", "--cask"]:
+                self.kp = "/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli"
+            return h.subprocess.CompletedProcess(cmd, 0, "", "")
+
+        h.run = run
+        h.find_keepassxc = lambda: self.kp
+        h.find_tool = lambda name: ["/usr/local/bin/" + name]
+        h.find_mise = lambda: None
+        h.Ansibro.check_folder = lambda self: None
+        h.Ansibro.version = lambda self: {"version": "1.2.0", "describe": None, "dirty": False}
+        h.Ansibro.state_mode = lambda self: "plain"
+        self.tmp = tempfile.TemporaryDirectory()
+        self.ab = h.Ansibro(self.tmp.name, "config.yml")
+        # Never this machine's real Homebrew, mise or KeePassXC.
+        nowhere = os.path.join(self.tmp.name, "nowhere")
+        h.MISE_PLACES, h.BREW_PLACES, h.AGE_PLACES = (nowhere,), (), ()
+        h.KEEPASSXC_APP = os.path.join(self.tmp.name, "KeePassXC.app")
+
+    def tearDown(self):
+        (h.run, h.shutil.which, h.sys.platform, h.find_keepassxc, h.find_tool, h.find_mise,
+         h.Ansibro.check_folder, h.Ansibro.version, h.Ansibro.state_mode,
+         h.MISE_PLACES, h.BREW_PLACES, h.AGE_PLACES, h.KEEPASSXC_APP) = self.saved
+        self.tmp.cleanup()
+
+    def doctor(self, platform, which, fix=True):
+        h.sys.platform = platform
+        h.shutil.which = lambda name: which.get(name)
+        args = h.argparse.Namespace(fix=fix)
+        with self.assertRaises(h.Stop) as stop:
+            h.cmd_doctor(self.ab, args, {})
+        return stop.exception.code
+
+    def test_mac_with_brew_installs_keepassxc(self):
+        self.assertEqual(self.doctor("darwin", {"brew": "/opt/homebrew/bin/brew"}), 0)
+        self.assertIn(["/opt/homebrew/bin/brew", "install", "--cask", "keepassxc"], self.ran)
+
+    def test_without_fix_nothing_is_installed(self):
+        self.assertEqual(self.doctor("darwin", {"brew": "/opt/homebrew/bin/brew"}, fix=False), 3)
+        self.assertEqual(self.ran, [])
+
+    def test_linux_never_runs_sudo(self):
+        self.assertEqual(self.doctor("linux", {"sudo": "/usr/bin/sudo", "apt-get": "/usr/bin/apt-get"}), 3)
+        self.assertFalse([c for c in self.ran if "sudo" in c[0] or "apt" in c[0] or "dnf" in c[0]], self.ran)
+
+    def test_mac_without_brew_asks_the_user(self):
+        self.assertEqual(self.doctor("darwin", {}), 3)
+        self.assertEqual(self.ran, [])
+
+    def test_missing_mise_is_installed_in_home(self):
+        h.find_tool = lambda name: None
+        self.kp = "/usr/bin/keepassxc-cli"
+        self.doctor("linux", {"curl": "/usr/bin/curl"})
+        self.assertEqual(self.ran[0][0], "/usr/bin/curl")
+        self.assertIn("https://mise.run", self.ran[0])
+        self.assertEqual(self.ran[1][0], "sh")  # mise's own installer, no sudo
+
+    def fake_tool(self, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(path, 0o755)
+        return path
+
+    def test_homebrew_mise_off_path_is_used_not_installed_again(self):
+        # brework's mise is in Homebrew's folder, which this shell's PATH lacks.
+        brew_mise = self.fake_tool(os.path.join(self.tmp.name, "opt", "homebrew", "bin", "mise"))
+        h.MISE_PLACES = (brew_mise, "/usr/local/bin/mise-not-here", "~/.local/bin/mise-not-here")
+        h.find_mise = self.saved[5]
+        h.find_tool = self.saved[4]
+        h.shutil.which = lambda name: None
+        self.assertEqual(h.find_mise(), brew_mise)
+        self.assertEqual(h.find_tool("pandoc")[:2], [brew_mise, "exec"])
+        self.kp = "/usr/bin/keepassxc-cli"
+        self.assertEqual(self.doctor("darwin", {}), 0)
+        self.assertFalse([c for c in self.ran if "https://mise.run" in c], "a second mise was installed")
+        self.assertIn([brew_mise, "install", f"pandoc@{h.TOOLS['pandoc']}"], self.ran)
+        # Only `mise install tool@version`: never `mise use`, never global config.
+        self.assertFalse([c for c in self.ran if c[0] == brew_mise and c[1] != "install"], self.ran)
+
+    def test_keepassxc_app_present_is_not_installed_again(self):
+        os.makedirs(h.KEEPASSXC_APP)  # installed, but its keepassxc-cli is too old (find_keepassxc says None)
+        self.assertEqual(self.doctor("darwin", {"brew": "/opt/homebrew/bin/brew"}), 3)
+        self.assertFalse([c for c in self.ran if "keepassxc" in c], self.ran)
+
+    def test_homebrew_brew_off_path_is_found(self):
+        brew = self.fake_tool(os.path.join(self.tmp.name, "opt", "homebrew", "bin", "brew"))
+        h.BREW_PLACES = (brew,)
+        h.shutil.which = lambda name: None
+        self.assertEqual(h.find_brew(), brew)
+
+    def test_tools_through_mise_are_downloaded_ahead(self):
+        h.find_tool = lambda name: ["/home/u/.local/bin/mise", "exec", f"{name}@{h.TOOLS[name]}", "--", name]
+        self.kp = "/usr/bin/keepassxc-cli"
+        self.assertEqual(self.doctor("linux", {}), 0)
+        for name, ver in h.TOOLS.items():
+            self.assertIn(["/home/u/.local/bin/mise", "install", f"{name}@{ver}"], self.ran)
+
+
 if __name__ == "__main__":
     unittest.main()

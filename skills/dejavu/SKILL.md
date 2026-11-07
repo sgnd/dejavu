@@ -43,7 +43,7 @@ Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and
 
 | Command | What it does |
 | --- | --- |
-| `doctor` | Checks the folder, Python, the state, mise and keepassxc-cli. Run it first. |
+| `doctor` | Checks the folder, Python, the state, mise and keepassxc-cli. Run it first. `--fix` installs what needs no admin rights: mise (in `~/.local/bin`) and the PDF tools; KeePassXC and age with Homebrew on macOS. |
 | `init` | Makes the output folder and `handover.yml` (the answers), and lists what is still empty. |
 | `facts` | Reads the facts from ansibro (no network, no SSH) and prints warnings. |
 | `check` | Runs ansibro's own acceptance test on the servers. Read-only, but it connects: ask first. |
@@ -56,7 +56,7 @@ Every line starts with `ok:`, `warning: [id]`, `needs the user: [id]` or `failed
 ## The steps
 
 1. **Say what will happen**, in plain words: "I will make the handover documents from the system's own settings. No password will appear in any document; passwords go in one locked file."
-2. **Doctor.** Run `doctor`. For each `needs the user` line, give the user the exact install command it shows (they may need their password). When `.venv/` is missing, this is not the folder that ran `./install.sh`: ask for the right one.
+2. **Doctor.** Run `doctor`. When it says `doctor --fix` would help, ask: "May I install the missing tools? mise goes into your home folder, no admin rights needed" (on a Mac also: "KeePassXC with Homebrew"). If yes, run `doctor --fix` (it downloads, so it can take a few minutes). For each `needs the user` line left, give the user the exact install command it shows (they may need their password); never run `sudo` yourself. When `.venv/` is missing, this is not the folder that ran `./install.sh`: ask for the right one.
 3. **Init and interview.** Run `init`, then ask the questions in [references/questions.md](references/questions.md), a few at a time, in the user's language. Write the answers into `handover.yml` in the output folder. Leave unknown answers empty (null); the documents then say "not provided", never a guess. Always ask the language: `id`, `en` or both.
 4. **Facts and warnings.** Run `facts`. Go through each warning with the user (references/troubleshooting.md says what each means). For each, the user decides: fix it (a change in `config.yml` and `./install.sh`, only with their consent) or accept it. Write an accepted one into `known_issues` in the user's words.
 5. **Acceptance test (ask first).** "May I run ansibro's own test now? It logs in to every app over SSH and changes nothing." If yes, run `check`. Explain any FAIL line; fix it with consent, or record it as a known issue. Without a check, the BAST says "not tested" instead of "in good condition".

@@ -6,7 +6,7 @@ Run it with ansibro's own Python, inside the ansibro folder that ran ./install.s
     .venv/bin/python <skill>/scripts/handover.py <command> [--out DIR] [--config FILE]
 
 Commands:
-    doctor      check this machine: the ansibro folder, Python, the tools
+    doctor      check this machine: the ansibro folder, Python, the tools (--fix installs what it safely can)
     init        make the output folder and handover.yml, the answers ansibro cannot know
     facts       read the facts from ansibro (no network, no SSH) into facts.json
     check       run ansibro's own acceptance test on the servers (read-only; ask first)
@@ -295,10 +295,11 @@ class Ansibro:
         st = os.stat(self.state_age)
         stamp = (st.st_mtime_ns, st.st_size)
         if getattr(self, "_age_cache", (None, None))[0] != stamp:
-            if not shutil.which("age"):
+            age = find_age()
+            if not age:
                 needs_user("age", "state.age is encrypted with age, but age is not installed. "
                            "macOS: brew install age. Linux: sudo apt-get install age")
-            p = subprocess.Popen(["age", "-d", "-i", self.key, self.state_age], stdout=subprocess.PIPE,
+            p = subprocess.Popen([age, "-d", "-i", self.key, self.state_age], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             data = {}
             with tarfile.open(fileobj=p.stdout, mode="r|") as tar:
@@ -1237,14 +1238,81 @@ def find_tool(name):
         v = tool_version([path])
         if v and v >= TOOL_MIN[name]:
             return [path]
-    mise = shutil.which("mise") or (os.path.expanduser("~/.local/bin/mise") if os.path.exists(os.path.expanduser("~/.local/bin/mise")) else None)
+    mise = find_mise()
     if mise:
         return [mise, "exec", f"{name}@{TOOLS[name]}", "--", name]
     return None
 
 
+MISE_HOME_BIN = "~/.local/bin/mise"  # where mise's own installer puts it (no admin rights)
+# A mise that is already there, also when this shell's PATH lacks it: Homebrew's (brework installs
+# mise that way) on Apple Silicon and Intel, then mise's own installer. dejavu only runs
+# `mise exec` / `mise install tool@version`: it never activates mise or changes its global config.
+MISE_PLACES = ("/opt/homebrew/bin/mise", "/usr/local/bin/mise", MISE_HOME_BIN)
+if TEST and os.environ.get("DEJAVU_TEST_NO_SYSTEM_MISE") == "1":  # tests of the missing-mise path
+    MISE_PLACES = (MISE_HOME_BIN,)
+BREW_PLACES = ("/opt/homebrew/bin/brew", "/usr/local/bin/brew")
+AGE_PLACES = ("/opt/homebrew/bin/age", "/usr/local/bin/age")
+KEEPASSXC_APP = "/Applications/KeePassXC.app"
+
+
+def find_mise():
+    found = shutil.which("mise")
+    if found:
+        return found
+    for p in MISE_PLACES:
+        p = os.path.expanduser(p)
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
+def find_brew():
+    return shutil.which("brew") or next((p for p in BREW_PLACES if os.path.isfile(p) and os.access(p, os.X_OK)), None)
+
+
+def find_age():
+    return shutil.which("age") or next((p for p in AGE_PLACES if os.path.isfile(p) and os.access(p, os.X_OK)), None)
+
+
+def install_mise():
+    """mise into ~/.local/bin with its official installer: no admin rights, nothing outside the home folder.
+    Returns the mise command, or None (the reason is printed)."""
+    curl = shutil.which("curl")
+    if not curl:
+        say("needs the user", f"mise is missing, and curl is not there to download it. Install mise: "
+            f"{install_lines()['mise']}", "tools")
+        return None
+    ok("installing mise into ~/.local/bin (no admin rights)")
+    with tempfile.TemporaryDirectory() as tmp:
+        script = os.path.join(tmp, "mise-install.sh")
+        r = run([curl, "-fsSL", "--retry", "3", "--connect-timeout", "20", "-o", script, "https://mise.run"])
+        if r.returncode == 0:
+            r = run(["sh", script], env=dict(os.environ, MISE_INSTALL_PATH=os.path.expanduser(MISE_HOME_BIN)))
+    mise = find_mise()
+    if r.returncode != 0 or not mise:
+        say("needs the user", "could not install mise (" + ((r.stderr or r.stdout).strip()[-300:] or "no network?")
+            + f"). Install it: {install_lines()['mise']}", "tools")
+        return None
+    ok(f"mise installed: {mise}")
+    return mise
+
+
+def brew_install(args, what):
+    """macOS with Homebrew only: brew needs no sudo for these. True when it worked."""
+    brew = find_brew()
+    if sys.platform != "darwin" or not brew:
+        return False
+    ok(f"installing {what} with Homebrew (this can take a few minutes)")
+    r = run([brew, "install"] + args)
+    if r.returncode != 0:
+        warning("brew", f"brew install {' '.join(args)} failed: " + (r.stderr or r.stdout).strip()[-300:])
+        return False
+    return True
+
+
 def find_keepassxc():
-    for p in (shutil.which("keepassxc-cli"), "/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli"):
+    for p in (shutil.which("keepassxc-cli"), KEEPASSXC_APP + "/Contents/MacOS/keepassxc-cli"):
         if p and os.path.exists(p):
             v = tool_version([p])
             if v and v >= KEEPASSXC_MIN:
@@ -1440,21 +1508,48 @@ def cmd_doctor(ab, args, data):
             warning("state-not-encrypted", "state/ is open while an age key exists. Close it with: scripts/state.sh close")
     except Stop as s:
         code = max(code, s.code)
+    # --fix installs what needs no admin rights (mise and the PDF tools; KeePassXC and age with Homebrew
+    # on macOS). Anything that needs sudo stays with the user. Running it again changes nothing.
+    fix = getattr(args, "fix", False)
+    mac_brew = sys.platform == "darwin" and bool(find_brew())
+    hint = "" if fix else " (or run: doctor --fix)"
     lines = install_lines()
+    if fix and not all(find_tool(n) for n in TOOLS) and not find_mise():
+        install_mise()
     for name in TOOLS:
         t = find_tool(name)
+        if t and len(t) > 1 and fix:  # through mise: download it now, so the first build needs no network
+            r = run([t[0], "install", f"{name}@{TOOLS[name]}"])
+            if r.returncode != 0:
+                warning("tools", f"mise could not download {name} {TOOLS[name]} now; the build tries again: "
+                        + (r.stderr or r.stdout).strip()[-300:])
         if t:
-            ok(f"{name}: {'mise ' + TOOLS[name] if 'mise' in t[0] else t[0]}")
+            ok(f"{name}: {'mise ' + TOOLS[name] if len(t) > 1 else t[0]}")
         else:
-            say("needs the user", f"{name} is missing, and mise is not installed. Install mise: {lines['mise']}", "tools")
+            say("needs the user", f"{name} is missing, and mise is not installed. Install mise: {lines['mise']}"
+                + ("" if fix else " (or run: doctor --fix, no admin rights)"), "tools")
             code = 3
     cli = find_keepassxc()
+    kp_hint = hint if mac_brew else ""
+    if not cli and os.path.isdir(KEEPASSXC_APP):
+        # KeePassXC is installed (by brew or by hand) but its keepassxc-cli is too old: never install it twice.
+        kp_hint = ""
+        lines["keepassxc"] = f"update KeePassXC in {KEEPASSXC_APP} to {'.'.join(map(str, KEEPASSXC_MIN))} or newer"
+    elif not cli and fix and brew_install(["--cask", "keepassxc"], "KeePassXC"):
+        cli = find_keepassxc()
     if cli:
         ok(f"keepassxc-cli: {cli}")
     else:
         say("needs the user", f"keepassxc-cli {'.'.join(map(str, KEEPASSXC_MIN))} or newer is missing. "
-            f"It makes the credentials file. Install: {lines['keepassxc']}", "keepassxc")
+            f"It makes the credentials file. Install: {lines['keepassxc']}" + kp_hint, "keepassxc")
         code = 3
+    if os.path.isfile(ab.state_age) and not find_age():
+        if not (fix and brew_install(["age"], "age") and find_age()):
+            say("needs the user", f"state.age is encrypted with age, but age is not installed. Install: {lines['age']}"
+                + (hint if mac_brew else ""), "age")
+            code = 3
+        else:
+            ok(f"age: {find_age()}")
     raise Stop(code)
 
 
@@ -1705,8 +1800,8 @@ def cmd_build(ab, args, data):
         for name in TOOLS:
             t = find_tool(name)
             if not t:
-                needs_user("tools", f"{name} is missing. Install mise ({install_lines()['mise']}); "
-                           "dejavu then downloads the pinned PDF tools itself.")
+                needs_user("tools", f"{name} is missing. Run doctor --fix (it installs mise, no admin rights), "
+                           f"or install mise ({install_lines()['mise']}); dejavu then downloads the pinned PDF tools itself.")
             tools[name] = t
 
     # 1. Plain files: ssh_config, hosts, diagrams, the CA.
@@ -1946,6 +2041,8 @@ def main(argv=None):
     p.add_argument("--force", action="store_true", help="overwrite documents edited by hand")
     p.add_argument("--rebuild-vault", action="store_true", help="make the credentials file again")
     p.add_argument("--new-passphrase", action="store_true", help="a new passphrase (when the old one leaked)")
+    p.add_argument("--fix", action="store_true", help="doctor: install what is missing where no admin rights are "
+                   "needed (mise and the PDF tools; KeePassXC and age with Homebrew on macOS)")
     p.add_argument("--no-pdf", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--inventory-json", help=argparse.SUPPRESS)
     p.add_argument("--groupvars-json", help=argparse.SUPPRESS)
