@@ -15,6 +15,13 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 - `scan` and `passphrase` work without `facts.json`.
 - `doctor --fix` installs the missing tools where no admin rights are needed: mise into `~/.local/bin`, and pandoc, Typst and d2 through mise (downloaded ahead, so the first build needs no network). On macOS with Homebrew it also installs KeePassXC, and age when `state.age` is used. Anything that needs `sudo` stays with the user. Running it again changes nothing.
 - dejavu shares one Mac with brework, ansibro and komando: it uses a mise that is already there (also Homebrew's in `/opt/homebrew/bin` or `/usr/local/bin` when it is not on PATH) instead of installing a second one, never reinstalls a KeePassXC.app that is there, finds Homebrew's brew and age off PATH, and only runs `mise exec` / `mise install tool@version`: it never edits `~/.zshrc`, `~/.bashrc` or mise's global config.
+- A wrong age key for `state.age` now stops with `failed [age]` and age's own message, instead of a Python traceback.
+- A `handover.yml` that is not valid YAML, or a `people:` entry that is not `name:/os:/persona:`, now stops with `failed [answers]` (exit 2) instead of a traceback.
+- `check` warns `server-facts` when ansible could not read the servers' details, and counts only the servers it reached. A garbled answer from one server no longer stops it.
+- `doctor` prints the dejavu version first, `handover.py --version` prints it, and `--help` lists the commands and exit codes.
+- The passphrase and SSH key files in `state/handover/` are set to mode 600 on every write, also when they already existed with a wider mode.
+- Docs: the message prefixes are written as dejavu prints them (`warning [id]:`, not `warning: [id]`); the troubleshooting tables lost their broken rows and gained `python` and `server-facts`; SECURITY.md says that S3 access key IDs are on keepassxc-cli's command line, that attachments touch a private temp folder for a moment, and how `doctor --fix` gets mise; the README links the troubleshooting guide and says how to update and remove the skill.
+- Tests: `NO_PDF=1` skips the golden comparison (the goldens list the PDFs), so it can pass. CI runs `apt-get update` before installing.
 
 ## 1.0.0
 
