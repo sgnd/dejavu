@@ -202,7 +202,7 @@ class Ansibro:
                 "swarm_app_constraint", "registry_addr"]
 
     def handover_json(self):
-        """state/handover.json (ansibro 1.3 and newer): the facts of the last install, no passwords.
+        """state/handover.json (ansibro after 1.3.0): the facts of the last install, no passwords.
         None when this ansibro does not write it."""
         mode = self.state_mode()
         try:
