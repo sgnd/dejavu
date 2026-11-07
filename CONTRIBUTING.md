@@ -19,7 +19,7 @@ A change fits when all of these are true:
 
 ```text
 handover.py build
-  facts      ansibro's inventory.py --list, state/handover.json (ansibro after 1.3.0; else one ansible
+  facts      ansibro's inventory.py --list, state/handover.json (ansibro newer than 1.2; else one ansible
              debug call for the group_vars rules, no SSH),
              alerts.yml, CHANGELOG.md, state/secrets names  +  assets/apps.yml   -> facts.json
   render     assets/<lang>/*.md.j2 with facts.json + handover.yml (the answers)  -> dist/<lang>/*.md

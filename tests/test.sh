@@ -239,7 +239,7 @@ has "only in a real terminal"
 # Test-only flags are refused outside the tests.
 expect 2 env DEJAVU_TEST= "$PY" "$H" facts --ansibro "$TMP/swarm-1-server/ansibro" --out "$TMP/x" --inventory-json /dev/null
 
-# --- ansibro after 1.3.0: state/handover.json replaces the ansible call, with the same facts ---
+# --- ansibro newer than 1.2: state/handover.json replaces the ansible call, with the same facts ---
 # Usage: same_facts CASE -> facts.json equals the golden one, apart from where the values came from
 same_facts() {
   if "$PY" - "$SRC/tests/golden/$1/facts.json" "$TMP/$1/out/facts.json" <<'PYEOF'
