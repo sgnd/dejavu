@@ -9,7 +9,7 @@
 #   CASES="a b"   only these test systems (default: all)
 #   ANSIBRO=DIR   an ansibro checkout (default: /ansibro, else ../ansibro next to this repo)
 #   UPDATE=1      write the golden files again (then review the diff)
-#   NO_PDF=1      skip the PDFs (faster)
+#   NO_PDF=1      skip the PDFs (faster); also skips the golden comparison, since the goldens list the PDFs
 
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -117,6 +117,8 @@ no_leak() {
 
 # Compare with tests/golden/<case>/ (UPDATE=1 writes them).
 golden() {
+  # Without PDFs the BAST annex lacks the PDF rows, so it can never match (and must not be written).
+  [ -n "$PDF" ] || return 0
   g="$SRC/tests/golden/$1"
   mkdir -p "$TMP/g"
   rm -rf "$TMP/g/$1"
