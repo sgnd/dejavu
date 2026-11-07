@@ -1,7 +1,7 @@
-domain: maju.example.id
+domain: northwind.example.com
 tls: letsencrypt
-acme_email: it@maju.example.id
-timezone: Asia/Jakarta
+acme_email: it@northwind.example.com
+timezone: Europe/London
 ssh: {user: ubuntu, key: ~/.ssh/id_ed25519, allow_from: [198.51.100.0/24]}
 admin_allow_from: [198.51.100.0/24]
 nodes:
@@ -16,6 +16,6 @@ apps:
 monitoring:
   telegram: {bot_token: "CANARY-cfg-telegram-0f3e9a7d2c41b8", chat_id: -1001234567890}
 backup:
-  repository: s3:https://s3.example.id/maju-backup
+  repository: s3:https://s3.example.com/northwind-backup
   s3_access_key: CANARY-cfg-s3access-7a1c9e
   s3_secret_key: CANARY-cfg-s3secret-4d8b2f6e

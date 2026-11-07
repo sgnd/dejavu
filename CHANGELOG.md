@@ -2,6 +2,14 @@
 
 Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `install.sh` installs the newest one.
 
+## Unreleased
+
+- English only: dejavu is made for clients anywhere. The Indonesian documents are gone, and so are the terms and practices of one country: the BAST is now the **handover certificate** (Handover and Acceptance Certificate), without the stamp-duty (meterai) box, and dates and numbers are written the English way.
+- `handover.yml`: the section `bast:` is now `certificate:`, `mengetahui:` is now `acknowledged_by:`, and `lang:` and `meterai:` are gone. A `handover.yml` from 1.1 still works: dejavu reads the old names and warns `answers-renamed` or `lang`.
+- The documents are in `dist/` itself, no longer in `dist/en/` or `dist/id/`. The first build removes those old folders (after the check for hand edits), and an old `<slug>-kredensial.kdbx`. The credentials file is always `<slug>-credentials.kdbx`, with English group names.
+- `apps.yml` holds one English text per app, note and group.
+- The test systems and the sample PDFs use English fake names and addresses.
+
 ## 1.1.0
 
 - Releases record how `dejavu-skill.tar.gz` and `install.sh` were built (GitHub build provenance). Check a download with `gh attestation verify dejavu-skill.tar.gz --repo sgnd/dejavu`. The GitHub Actions in CI are pinned to commits.

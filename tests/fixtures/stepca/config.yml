@@ -3,7 +3,7 @@ tls: letsencrypt
 acme_email: ops@internal.example
 acme_server: https://ca.internal.example/acme/acme/directory
 acme_ca_cert: ca.crt
-timezone: Asia/Jakarta
+timezone: Europe/London
 ssh: {user: ubuntu, key: ~/.ssh/id_ed25519}
 nodes:
   - {name: app1, ip: 192.168.50.11, host: 192.168.50.11, role: manager}

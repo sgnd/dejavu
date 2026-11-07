@@ -1,16 +1,16 @@
-01 Login web/
-01 Login web/RabbitMQ
-01 Login web/Swarmpit
-01 Login web/Traefik
-01 Login web/Uptime Kuma
-02 Database dan cache/
-02 Database dan cache/MariaDB
-02 Database dan cache/Valkey
-04 Infrastruktur/
-04 Infrastruktur/Image registry
-05 Pemulihan (darurat)/
-05 Pemulihan (darurat)/Backup (restic)
-05 Pemulihan (darurat)/config.yml backup.repository
-06 Internal (menjalankan ulang ansibro)/
-06 Internal (menjalankan ulang ansibro)/traefik_salt
-06 Internal (menjalankan ulang ansibro)/ansibro installer files
+01 Web logins/
+01 Web logins/RabbitMQ
+01 Web logins/Swarmpit
+01 Web logins/Traefik
+01 Web logins/Uptime Kuma
+02 Databases and cache/
+02 Databases and cache/MariaDB
+02 Databases and cache/Valkey
+04 Infrastructure/
+04 Infrastructure/Image registry
+05 Recovery (break-glass)/
+05 Recovery (break-glass)/Backup (restic)
+05 Recovery (break-glass)/config.yml backup.repository
+06 Internal (re-run ansibro)/
+06 Internal (re-run ansibro)/traefik_salt
+06 Internal (re-run ansibro)/ansibro installer files

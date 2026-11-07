@@ -1,0 +1,19 @@
+# The architecture of northwind.example.com, made by dejavu 1.1.0 from ansibro's facts.
+direction: down
+users: "Users and admins" {shape: person}
+dns: "DNS *.northwind.example.com" {shape: cloud}
+users -> dns: HTTPS 443
+cluster: "Docker Swarm" {
+  "server1": "server1\nmanager · data\n10.10.0.10" {
+    style.stroke-width: 3
+    tooltip: "postgres, redis, rustfs, victoria"
+  }
+  services: "Cluster apps\nportainer, traefik" {shape: hexagon}
+}
+apps_1: "postgres, redis, rustfs, victoria" {shape: cylinder}
+cluster."server1" -> apps_1
+dns -> cluster."server1": "80/443"
+backup: "Backup\ns3 · s3.example.com" {shape: stored_data}
+cluster -> backup: "restic 02:00"
+alerts: "Alerts\ntelegram" {shape: page}
+cluster -> alerts

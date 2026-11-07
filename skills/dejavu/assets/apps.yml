@@ -2,7 +2,7 @@
 # what each app is for, its web pages and how they are guarded, its ports, data, backup,
 # and every file in state/secrets with how to change it after the handover.
 # Checked against ansibro 1.2.0 and 1.3 (main). tests/drift.py fails when ansibro adds an app or a secret
-# that is not here. Every text has an Indonesian (id) and an English (en) version.
+# that is not here.
 ansibro: "1.2.0"
 
 # guard: who can open a web page.
@@ -15,9 +15,7 @@ ansibro: "1.2.0"
 # laptop: web (a browser is enough), tunnel (an SSH tunnel to a port), none
 apps:
   traefik:
-    about:
-      id: Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.
-      en: The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.
+    about: The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.
     web: [{host: traefik, path: /dashboard/, guard: admin, login: layer}]
     ports: []
     data: [traefik]
@@ -27,13 +25,10 @@ apps:
     images: [traefik]
     notes:
       - when: k3s
-        id: Di k3s yang dipakai adalah Traefik bawaan k3s, dengan versi dari k3s.
-        en: On k3s this is the Traefik built into k3s, with the version that comes with k3s.
+        text: On k3s this is the Traefik built into k3s, with the version that comes with k3s.
 
   kong:
-    about:
-      id: Gerbang API. Satu alamat untuk API Anda, dengan API key, batas akses, dan rute.
-      en: An API gateway. One address for your APIs, with API keys, rate limits and routes.
+    about: An API gateway. One address for your APIs, with API keys, rate limits and routes.
     web:
       - {host: kong, path: /, guard: public, login: none}
       - {host: kong-manager, path: /, guard: admin, login: layer}
@@ -44,18 +39,13 @@ apps:
     laptop: web
     images: [kong]
     notes:
-      - id: Pengaturan Kong tersimpan di database PostgreSQL "kong". Layanan API Anda harus bergabung ke jaringan "kong".
-        en: Kong keeps its settings in the PostgreSQL database "kong". Your API services must join the network "kong".
-      - id: Alamat kong.<domain> terbuka untuk umum; itulah alamat API Anda.
-        en: kong.<domain> is open to anyone; it is the address of your APIs.
+      - text: Kong keeps its settings in the PostgreSQL database "kong". Your API services must join the network "kong".
+      - text: kong.<domain> is open to anyone; it is the address of your APIs.
       - when: swarm
-        id: API admin Kong (port 8001) hanya bisa dibuka lewat kong-manager.<domain>/api, di balik login admin. Sejak ansibro 1.3, Traefik menambahkan kunci state/secrets/kong_admin_key ke setiap panggilan, dan Kong menolak panggilan tanpa kunci itu.
-        en: Kong's admin API (port 8001) is reachable only at kong-manager.<domain>/api, behind the admin login. Since ansibro 1.3, Traefik adds the key state/secrets/kong_admin_key to every call, and Kong refuses calls without it.
+        text: Kong's admin API (port 8001) is reachable only at kong-manager.<domain>/api, behind the admin login. Since ansibro 1.3, Traefik adds the key state/secrets/kong_admin_key to every call, and Kong refuses calls without it.
 
   portainer:
-    about:
-      id: Halaman web untuk melihat dan mengelola container dan stack di cluster.
-      en: A web page to see and manage the containers and stacks of the cluster.
+    about: A web page to see and manage the containers and stacks of the cluster.
     web: [{host: portainer, path: /, guard: admin-ip, login: own}]
     ports: []
     data: [portainer]
@@ -64,13 +54,10 @@ apps:
     laptop: web
     images: [portainer, portainer-agent]
     notes:
-      - id: File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.
-        en: The password file is read only at Portainer's first start. After that, change the password in Portainer itself.
+      - text: The password file is read only at Portainer's first start. After that, change the password in Portainer itself.
 
   swarmpit:
-    about:
-      id: Halaman web ringan untuk mengelola Docker Swarm.
-      en: A lighter web page to manage Docker Swarm.
+    about: A lighter web page to manage Docker Swarm.
     web: [{host: swarmpit, path: /, guard: admin-ip, login: own}]
     ports: []
     data: [swarmpit]
@@ -79,13 +66,10 @@ apps:
     laptop: web
     images: [swarmpit, swarmpit-agent, couchdb, influxdb]
     notes:
-      - id: Swarmpit memakai CouchDB 2.3 dan InfluxDB 1.8 yang sudah tua. Ini risiko yang diketahui.
-        en: Swarmpit uses CouchDB 2.3 and InfluxDB 1.8, which are old. This is a known risk.
+      - text: Swarmpit uses CouchDB 2.3 and InfluxDB 1.8, which are old. This is a known risk.
 
   keycloak:
-    about:
-      id: Server login tunggal (SSO). Satu login (OIDC/SAML) untuk aplikasi dan pengguna Anda.
-      en: A single sign-on server. One login (OIDC/SAML) for your apps and users.
+    about: A single sign-on server. One login (OIDC/SAML) for your apps and users.
     web:
       - {host: keycloak, path: /, guard: public, login: own}
       - {host: oauth, path: /, guard: public, login: own, when: keycloak_login}
@@ -96,15 +80,11 @@ apps:
     laptop: web
     images: [keycloak, oauth2-proxy]
     notes:
-      - id: Halaman Keycloak terbuka untuk umum (tidak dibatasi IP), karena pengguna aplikasi Anda login di sana.
-        en: Keycloak's page is open to anyone (no IP limit), because the users of your apps log in there.
-      - id: Bila Keycloak menjadi login admin, realm "ansibro" dengan user admin melindungi halaman admin. Aplikasi autentikator diatur saat login pertama; bila yang login pertama adalah vendor, reset dulu.
-        en: When Keycloak is the admin login, the realm "ansibro" with user admin guards the admin pages. The authenticator app is set up at the first login; if the vendor logged in first, reset it.
+      - text: Keycloak's page is open to anyone (no IP limit), because the users of your apps log in there.
+      - text: When Keycloak is the admin login, the realm "ansibro" with user admin guards the admin pages. The authenticator app is set up at the first login; if the vendor logged in first, reset it.
 
   authelia:
-    about:
-      id: Halaman login dengan faktor kedua (2FA) di depan halaman admin.
-      en: A login page with a second factor (2FA) in front of the admin pages.
+    about: A login page with a second factor (2FA) in front of the admin pages.
     web: [{host: authelia, path: /, guard: public, login: own}]
     ports: []
     data: [authelia]
@@ -113,15 +93,11 @@ apps:
     laptop: web
     images: [authelia]
     notes:
-      - id: Setelah instalasi, file users.yml di server pertama adalah sumber kebenaran untuk akun Authelia.
-        en: After the install, users.yml on the first manager is the source of truth for Authelia's accounts.
-      - id: Tidak ada server email. Kode 2FA pertama dan tautan reset ditulis ke /opt/ansibro/authelia/config/notification.txt di server pertama.
-        en: There is no mail server. The first 2FA code and reset links are written to /opt/ansibro/authelia/config/notification.txt on the first manager.
+      - text: After the install, users.yml on the first manager is the source of truth for Authelia's accounts.
+      - text: There is no mail server. The first 2FA code and reset links are written to /opt/ansibro/authelia/config/notification.txt on the first manager.
 
   postgres:
-    about:
-      id: Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).
-      en: An SQL database for your apps (and for Kong, Keycloak and Authelia).
+    about: An SQL database for your apps (and for Kong, Keycloak and Authelia).
     web: []
     ports: [{port: 5432, use: PostgreSQL}]
     data: [postgres]
@@ -130,15 +106,11 @@ apps:
     laptop: tunnel
     images: [postgres, spilo, etcd, haproxy]
     notes:
-      - id: Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.
-        en: On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.
-      - id: Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.
-        en: A major version upgrade (for example 18 to 19) needs a manual dump and restore.
+      - text: On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.
+      - text: A major version upgrade (for example 18 to 19) needs a manual dump and restore.
 
   mariadb:
-    about:
-      id: Database SQL yang kompatibel dengan MySQL.
-      en: An SQL database compatible with MySQL.
+    about: An SQL database compatible with MySQL.
     web: []
     ports: [{port: 3306, use: MariaDB}]
     data: [mariadb]
@@ -147,15 +119,11 @@ apps:
     laptop: tunnel
     images: [mariadb, haproxy]
     notes:
-      - id: Dengan 3 server, MariaDB berjalan sebagai cluster Galera. Bila ketiganya mati bersamaan, cluster harus dipulihkan manual.
-        en: On 3 servers MariaDB runs as a Galera cluster. If all three stop at once, the cluster must be recovered by hand.
-      - id: Kata sandi root juga dipakai backup malam. Bila diganti hanya di MariaDB, dump malam gagal diam-diam sampai alert BackupTooOld.
-        en: The nightly backup uses the root password too. If it is changed only inside MariaDB, the nightly dump fails silently until BackupTooOld fires.
+      - text: On 3 servers MariaDB runs as a Galera cluster. If all three stop at once, the cluster must be recovered by hand.
+      - text: The nightly backup uses the root password too. If it is changed only inside MariaDB, the nightly dump fails silently until BackupTooOld fires.
 
   redis:
-    about:
-      id: Penyimpanan key-value di memori, untuk cache dan sesi login.
-      en: An in-memory key-value store, for cache and login sessions.
+    about: An in-memory key-value store, for cache and login sessions.
     web: []
     ports: [{port: 6379, use: Redis}]
     data: [redis]
@@ -164,13 +132,10 @@ apps:
     laptop: tunnel
     images: [redis]
     notes:
-      - id: Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master "ansibro").
-        en: On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name "ansibro").
+      - text: On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name "ansibro").
 
   valkey:
-    about:
-      id: Penyimpanan key-value di memori (pengganti Redis yang sepenuhnya open source), untuk cache dan sesi login.
-      en: An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions.
+    about: An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions.
     web: []
     ports: [{port: 6379, use: Valkey}]
     data: [valkey]
@@ -179,13 +144,10 @@ apps:
     laptop: tunnel
     images: [valkey]
     notes:
-      - id: Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master "ansibro").
-        en: On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name "ansibro").
+      - text: On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name "ansibro").
 
   rustfs:
-    about:
-      id: Penyimpanan file kompatibel S3 untuk aplikasi Anda.
-      en: S3-compatible file storage for your apps.
+    about: S3-compatible file storage for your apps.
     web: [{host: rustfs, path: /rustfs/console/, guard: admin-ip, login: own}]
     ports: [{port: 9000, use: S3}]
     data: [rustfs]
@@ -194,13 +156,10 @@ apps:
     laptop: tunnel
     images: [rustfs]
     notes:
-      - id: Region S3 adalah us-east-1.
-        en: The S3 region is us-east-1.
+      - text: The S3 region is us-east-1.
 
   garage:
-    about:
-      id: Penyimpanan file kompatibel S3. Pada 3 server, setiap file disimpan 3 salinan.
-      en: S3-compatible file storage. On 3 servers it keeps 3 copies of every file.
+    about: S3-compatible file storage. On 3 servers it keeps 3 copies of every file.
     web: []
     ports: [{port: 3900, use: S3}]
     data: [garage]
@@ -209,15 +168,11 @@ apps:
     laptop: tunnel
     images: [garage]
     notes:
-      - id: Access key adalah "GK" diikuti isi file garage_access_key; region "garage". Jumlah salinan tidak bisa diubah setelah instalasi pertama.
-        en: The access key is "GK" followed by the garage_access_key file; the region is "garage". The number of copies cannot change after the first install.
-      - id: Mengubah file kunci menambah kunci kedua; kunci lama tetap berlaku sampai dihapus dengan perintah garage.
-        en: Editing the key file adds a second key; the old key stays valid until it is deleted with the garage command.
+      - text: The access key is "GK" followed by the garage_access_key file; the region is "garage". The number of copies cannot change after the first install.
+      - text: Editing the key file adds a second key; the old key stays valid until it is deleted with the garage command.
 
   rabbitmq:
-    about:
-      id: Antrean pesan (AMQP). Aplikasi saling menyerahkan pekerjaan lewat antrean.
-      en: A message queue (AMQP). Apps hand work to each other through queues.
+    about: A message queue (AMQP). Apps hand work to each other through queues.
     web: [{host: rabbitmq, path: /, guard: admin-ip, login: own}]
     ports: [{port: 5672, use: AMQP}]
     data: [rabbitmq]
@@ -228,9 +183,7 @@ apps:
     notes: []
 
   nats:
-    about:
-      id: Pesan cepat antar-aplikasi, dengan JetStream untuk aliran yang disimpan.
-      en: Fast messages between apps, with JetStream for stored streams.
+    about: Fast messages between apps, with JetStream for stored streams.
     web: [{host: nats, path: /, guard: admin, login: layer}]
     ports: [{port: 4222, use: NATS}]
     data: [nats]
@@ -241,9 +194,7 @@ apps:
     notes: []
 
   uptimekuma:
-    about:
-      id: Memeriksa setiap menit bahwa halaman web Anda menjawab, dan memberi tahu bila ada yang mati.
-      en: Checks every minute that your web pages answer, and tells you when one is down.
+    about: Checks every minute that your web pages answer, and tells you when one is down.
     web: [{host: uptimekuma, path: /, guard: admin-ip, login: own}]
     ports: []
     data: [uptimekuma]
@@ -252,13 +203,10 @@ apps:
     laptop: web
     images: [uptimekuma]
     notes:
-      - id: Monitor dibuat sekali saat instalasi pertama. Notifikasi (email, Telegram, dan lainnya) harus diatur sendiri di Uptime Kuma.
-        en: The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself.
+      - text: The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself.
 
   beszel:
-    about:
-      id: Dasbor sederhana CPU, memori, disk, dan container setiap server, dengan peringatan yang diatur di halamannya.
-      en: A simple dashboard of CPU, memory, disk and containers on every server, with alerts set in its own page.
+    about: A simple dashboard of CPU, memory, disk and containers on every server, with alerts set in its own page.
     web: [{host: beszel, path: /, guard: admin-ip, login: own}]
     ports: []
     data: [beszel, beszel-agent]
@@ -267,13 +215,10 @@ apps:
     laptop: web
     images: [beszel, beszel-agent]
     notes:
-      - id: Peringatan Beszel diatur sendiri di halaman Beszel. Installer login dengan kata sandi admin setiap kali dijalankan.
-        en: Beszel alerts are set up in Beszel's own page. The installer logs in with the admin password on every run.
+      - text: Beszel alerts are set up in Beszel's own page. The installer logs in with the admin password on every run.
 
   victoria:
-    about:
-      id: Pemantauan lengkap. Metrik, log, aturan peringatan, Grafana, dan peringatan ke Telegram, email, atau webhook.
-      en: Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook.
+    about: Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook.
     web:
       - {host: grafana, path: /, guard: admin-ip, login: own}
       - {host: alertmanager, path: /, guard: admin, login: layer}
@@ -286,13 +231,10 @@ apps:
     laptop: web
     images: [victoriametrics, victorialogs, vmalert, alertmanager, grafana]
     notes:
-      - id: Riwayat metrik dan log tidak ikut di-backup; yang di-backup adalah pengaturan, Grafana, dan Alertmanager.
-        en: The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are.
+      - text: The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are.
 
   openbao:
-    about:
-      id: Brankas untuk rahasia aplikasi Anda (kata sandi, API key). Aplikasi membacanya lewat API.
-      en: A safe for your apps' secrets (passwords, API keys). Apps read them through an API.
+    about: A safe for your apps' secrets (passwords, API keys). Apps read them through an API.
     web: [{host: openbao, path: /ui/, guard: admin-ip, login: own}]
     ports: [{port: 8200, use: OpenBao API}]
     data: [openbao]
@@ -301,10 +243,8 @@ apps:
     laptop: web
     images: [openbao]
     notes:
-      - id: OpenBao terkunci (sealed) setiap kali restart, dan health check-nya tetap hijau saat terkunci. Buka kuncinya dengan unseal key di halaman web, atau jalankan ./install.sh lagi.
-        en: OpenBao is sealed after every restart, and its health check stays green while sealed. Unseal it with the unseal key in the web page, or run ./install.sh again.
-      - id: Installer memakai root token setiap kali dijalankan; mencabutnya membuat instalasi berikutnya gagal.
-        en: The installer uses the root token on every run; revoking it breaks the next install.
+      - text: OpenBao is sealed after every restart, and its health check stays green while sealed. Unseal it with the unseal key in the web page, or run ./install.sh again.
+      - text: The installer uses the root token on every run; revoking it breaks the next install.
 
 # What the catalog does not list, for the architecture chapter.
 # when: always, patroni (postgres on 2+ servers), ha_db (postgres 2+ or mariadb 3),
@@ -316,90 +256,70 @@ components:
     port: 5000
     image: registry
     license: Apache-2.0
-    about:
-      id: Registry image pribadi di setiap manager. Semua server menarik image dari sini.
-      en: A private image registry on every manager. All servers pull images from it.
+    about: A private image registry on every manager. All servers pull images from it.
   database-proxy:
     when: ha_db
     where: cluster
     port: 5432
     image: haproxy
     license: GPL-2.0
-    about:
-      id: HAProxy di depan database ber-HA, selalu menuju server utama (primary).
-      en: HAProxy in front of the HA database, always pointing at the primary.
+    about: HAProxy in front of the HA database, always pointing at the primary.
   etcd:
     when: patroni
     where: managers
     port: 12379
     image: etcd
     license: Apache-2.0
-    about:
-      id: Penyimpanan kunci-nilai yang dipakai Patroni untuk memilih server utama PostgreSQL.
-      en: The key-value store Patroni uses to elect the PostgreSQL primary.
+    about: The key-value store Patroni uses to elect the PostgreSQL primary.
   oauth2-proxy:
     when: keycloak_login
     where: cluster
     port: null
     image: oauth2-proxy
     license: MIT
-    about:
-      id: Menghubungkan halaman admin ke login Keycloak, di oauth.<domain>.
-      en: Connects the admin pages to the Keycloak login, at oauth.<domain>.
+    about: Connects the admin pages to the Keycloak login, at oauth.<domain>.
   sentinel:
     when: ha_cache
     where: cache servers
     port: 26379
     image: null
     license: null
-    about:
-      id: Mengawasi Redis atau Valkey dan memindahkan primary bila server utama mati.
-      en: Watches Redis or Valkey and moves the primary when it goes down.
+    about: Watches Redis or Valkey and moves the primary when it goes down.
   galera-check:
     when: galera
     where: mariadb servers
     port: 9200
     image: null
     license: null
-    about:
-      id: Pemeriksaan sinkronisasi Galera untuk database-proxy.
-      en: The Galera sync check used by the database-proxy.
+    about: The Galera sync check used by the database-proxy.
   monitoring-agents:
     when: victoria
     where: every server
     port: 9100
     image: node-exporter
     license: Apache-2.0
-    about:
-      id: node-exporter, cAdvisor, Vector, dan exporter database di setiap server, plus timer ansibro-metrics.
-      en: node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer.
+    about: node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer.
   backup:
     when: backup
     where: every server
     port: null
     image: null
     license: BSD-2-Clause
-    about:
-      id: Timer ansibro-backup dengan restic setiap malam di setiap server.
-      en: The ansibro-backup timer with restic, every night on every server.
+    about: The ansibro-backup timer with restic, every night on every server.
   k3s:
     when: k3s
     where: every server
     port: 6443
     image: null
     license: Apache-2.0
-    about:
-      id: Kubernetes ringan yang menjalankan aplikasi cluster.
-      en: The small Kubernetes that runs the cluster apps.
+    about: The small Kubernetes that runs the cluster apps.
   wireguard:
     when: wireguard
     where: every server
     port: 51820
     image: null
     license: GPL-2.0
-    about:
-      id: Jaringan terenkripsi antar-server saja (bukan VPN untuk laptop).
-      en: The encrypted network between the servers only (not a VPN for laptops).
+    about: The encrypted network between the servers only (not a VPN for laptops).
 
 # Every file ansibro writes in state/secrets.
 #   app:      the app it belongs to (or a component)
@@ -483,10 +403,10 @@ entries:
 
 # Group titles in the credentials file, in order.
 groups:
-  web: {id: 01 Login web, en: 01 Web logins}
-  data: {id: 02 Database dan cache, en: 02 Databases and cache}
-  storage: {id: 03 Penyimpanan S3, en: 03 S3 storage}
-  infra: {id: 04 Infrastruktur, en: 04 Infrastructure}
-  recovery: {id: 05 Pemulihan (darurat), en: 05 Recovery (break-glass)}
-  internal: {id: 06 Internal (menjalankan ulang ansibro), en: 06 Internal (re-run ansibro)}
-  old: {id: 07 Lama (aplikasi yang sudah dihapus), en: 07 Old (removed apps)}
+  web: 01 Web logins
+  data: 02 Databases and cache
+  storage: 03 S3 storage
+  infra: 04 Infrastructure
+  recovery: 05 Recovery (break-glass)
+  internal: 06 Internal (re-run ansibro)
+  old: 07 Old (removed apps)

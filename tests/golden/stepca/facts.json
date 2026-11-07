@@ -14,7 +14,7 @@
   "acme_email": "ops@internal.example",
   "acme_server": "ca.internal.example",
   "ca_file": true,
-  "timezone": "Asia/Jakarta",
+  "timezone": "Europe/London",
   "offline": false,
   "ssh": {
     "user": "ubuntu",
@@ -81,10 +81,7 @@
       "ha": false,
       "known": true,
       "info": "192.168.50.21:3306 (user root, password state/secrets/mariadb)",
-      "about": {
-        "id": "Database SQL yang kompatibel dengan MySQL.",
-        "en": "An SQL database compatible with MySQL."
-      },
+      "about": "An SQL database compatible with MySQL.",
       "web": [],
       "ports": [
         {
@@ -99,14 +96,8 @@
       "health": "healthcheck.sh --connect --innodb_initialized",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 3 server, MariaDB berjalan sebagai cluster Galera. Bila ketiganya mati bersamaan, cluster harus dipulihkan manual.",
-          "en": "On 3 servers MariaDB runs as a Galera cluster. If all three stop at once, the cluster must be recovered by hand."
-        },
-        {
-          "id": "Kata sandi root juga dipakai backup malam. Bila diganti hanya di MariaDB, dump malam gagal diam-diam sampai alert BackupTooOld.",
-          "en": "The nightly backup uses the root password too. If it is changed only inside MariaDB, the nightly dump fails silently until BackupTooOld fires."
-        }
+        "On 3 servers MariaDB runs as a Galera cluster. If all three stop at once, the cluster must be recovered by hand.",
+        "The nightly backup uses the root password too. If it is changed only inside MariaDB, the nightly dump fails silently until BackupTooOld fires."
       ],
       "images": [
         {
@@ -130,10 +121,7 @@
       "ha": false,
       "known": true,
       "info": "amqp://192.168.50.21:5672 (user admin, password state/secrets/rabbitmq), UI https://rabbitmq.apps.internal.example (needs traefik)",
-      "about": {
-        "id": "Antrean pesan (AMQP). Aplikasi saling menyerahkan pekerjaan lewat antrean.",
-        "en": "A message queue (AMQP). Apps hand work to each other through queues."
-      },
+      "about": "A message queue (AMQP). Apps hand work to each other through queues.",
       "web": [
         {
           "host": "rabbitmq",
@@ -176,10 +164,7 @@
       "ha": false,
       "known": true,
       "info": "https://swarmpit.apps.internal.example (user admin, password state/secrets/swarmpit_admin)",
-      "about": {
-        "id": "Halaman web ringan untuk mengelola Docker Swarm.",
-        "en": "A lighter web page to manage Docker Swarm."
-      },
+      "about": "A lighter web page to manage Docker Swarm.",
       "web": [
         {
           "host": "swarmpit",
@@ -197,10 +182,7 @@
       "health": "POST /login",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Swarmpit memakai CouchDB 2.3 dan InfluxDB 1.8 yang sudah tua. Ini risiko yang diketahui.",
-          "en": "Swarmpit uses CouchDB 2.3 and InfluxDB 1.8, which are old. This is a known risk."
-        }
+        "Swarmpit uses CouchDB 2.3 and InfluxDB 1.8, which are old. This is a known risk."
       ],
       "images": [
         {
@@ -240,10 +222,7 @@
       "ha": false,
       "known": true,
       "info": "https://traefik.apps.internal.example (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
-        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
-      },
+      "about": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.",
       "web": [
         {
           "host": "traefik",
@@ -283,10 +262,7 @@
       "ha": false,
       "known": true,
       "info": "https://uptimekuma.apps.internal.example (user admin, password state/secrets/uptimekuma_admin). Monitors for every web page are made for you",
-      "about": {
-        "id": "Memeriksa setiap menit bahwa halaman web Anda menjawab, dan memberi tahu bila ada yang mati.",
-        "en": "Checks every minute that your web pages answer, and tells you when one is down."
-      },
+      "about": "Checks every minute that your web pages answer, and tells you when one is down.",
       "web": [
         {
           "host": "uptimekuma",
@@ -304,10 +280,7 @@
       "health": "TCP 3001",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Monitor dibuat sekali saat instalasi pertama. Notifikasi (email, Telegram, dan lainnya) harus diatur sendiri di Uptime Kuma.",
-          "en": "The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself."
-        }
+        "The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself."
       ],
       "images": [
         {
@@ -331,10 +304,7 @@
       "ha": false,
       "known": true,
       "info": "192.168.50.21:6379 (password state/secrets/valkey)",
-      "about": {
-        "id": "Penyimpanan key-value di memori (pengganti Redis yang sepenuhnya open source), untuk cache dan sesi login.",
-        "en": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions."
-      },
+      "about": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions.",
       "web": [],
       "ports": [
         {
@@ -349,10 +319,7 @@
       "health": "valkey-cli ping",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
-          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
-        }
+        "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
       ],
       "images": [
         {
@@ -372,10 +339,7 @@
       "port": 5000,
       "version": "3.1.2",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
-        "en": "A private image registry on every manager. All servers pull images from it."
-      }
+      "about": "A private image registry on every manager. All servers pull images from it."
     },
     {
       "name": "backup",
@@ -383,10 +347,7 @@
       "port": null,
       "version": "",
       "license": "BSD-2-Clause",
-      "about": {
-        "id": "Timer ansibro-backup dengan restic setiap malam di setiap server.",
-        "en": "The ansibro-backup timer with restic, every night on every server."
-      }
+      "about": "The ansibro-backup timer with restic, every night on every server."
     }
   ],
   "backup": {

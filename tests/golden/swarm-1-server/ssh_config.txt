@@ -1,21 +1,21 @@
-# SSH settings for PT Maju Bersama (maju.example.id), made by dejavu 1.1.0.
+# SSH settings for Northwind Logistics Ltd (northwind.example.com), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 
-Host maju-server1
+Host northwind-server1
   HostName 203.0.113.10
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# A private pipe to the databases and other services: run "ssh -N northwind-tunnel" and keep it open.
 # Then connect to 127.0.0.1 and the local port below.
-Host maju-tunnel
+Host northwind-tunnel
   HostName 203.0.113.10
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
   ExitOnForwardFailure yes
   # PostgreSQL on server1

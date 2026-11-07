@@ -24,7 +24,7 @@
    "standalone"
   ],
   "vars": {
-   "acme_email": "it@maju.example.id",
+   "acme_email": "it@northwind.example.com",
    "admin_allow_from": [
     "198.51.100.0/24"
    ],
@@ -54,7 +54,7 @@
     "victoria": "server1"
    },
    "backup": {
-    "repository": "s3:https://s3.example.id/maju-backup",
+    "repository": "s3:https://s3.example.com/northwind-backup",
     "s3_access_key": "CANARY-cfg-s3access-7a1c9e",
     "s3_secret_key": "CANARY-cfg-s3secret-4d8b2f6e"
    },
@@ -225,7 +225,7 @@
     "docker-buildx-plugin=0.38.1-1*",
     "docker-compose-plugin=5.6.1-1*"
    ],
-   "domain": "maju.example.id",
+   "domain": "northwind.example.com",
    "images": {
     "alertmanager": {
      "digest": "sha256:39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b",
@@ -445,7 +445,7 @@
     "traefik",
     "portainer"
    ],
-   "timezone": "Asia/Jakarta",
+   "timezone": "Europe/London",
    "tls": "letsencrypt",
    "wireguard": false,
    "wireguard_port": 51820

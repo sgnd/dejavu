@@ -64,17 +64,11 @@ $endif$
 #set outline(indent: auto)
 #show outline.entry.where(level: 1): set text(weight: "bold")
 
-// The signature block of the BAST. It never breaks across pages.
-#let person(p, meterai) = align(center)[
+// The signature block of the handover certificate. It never breaks across pages.
+#let person(p) = align(center)[
   #text(weight: "bold")[#p.role] \
   #p.company
-  #box(height: 26mm, width: 100%)[
-    #if meterai [
-      #align(left + horizon)[#rect(width: 30mm, height: 20mm, stroke: (dash: "dashed", paint: luma(150)))[
-        #align(center + horizon)[#text(7pt, fill: luma(120))[$meterai-label$]]
-      ]]
-    ]
-  ]
+  #box(height: 26mm, width: 100%)[]
   #underline[#text(weight: "bold")[#p.name]] \
   #p.title
 ]
@@ -82,15 +76,15 @@ $endif$
   #v(6mm)
   #grid(columns: (1fr, 1fr), column-gutter: 14mm,
 $for(signatories)$
-    person((role: [$signatories.role$], company: [$signatories.company$], name: [$signatories.name$], title: [$signatories.title$]), $if(signatories.meterai)$true$else$false$endif$),
+    person((role: [$signatories.role$], company: [$signatories.company$], name: [$signatories.name$], title: [$signatories.title$])),
 $endfor$
   )
-$if(mengetahui)$
+$if(acknowledged)$
   #v(6mm)
-  #align(center)[#text(weight: "bold")[$mengetahui-label$]]
-  #grid(columns: (1fr,) * calc.min($mengetahui-count$, 3), column-gutter: 10mm,
-$for(mengetahui)$
-    person((role: [], company: [$mengetahui.company$], name: [$mengetahui.name$], title: [$mengetahui.title$]), false),
+  #align(center)[#text(weight: "bold")[$acknowledged-label$]]
+  #grid(columns: (1fr,) * calc.min($acknowledged-count$, 3), column-gutter: 10mm,
+$for(acknowledged)$
+    person((role: [], company: [$acknowledged.company$], name: [$acknowledged.name$], title: [$acknowledged.title$])),
 $endfor$
   )
 $endif$
@@ -99,7 +93,7 @@ $if(witnesses)$
   #align(center)[#text(weight: "bold")[$witnesses-label$]]
   #grid(columns: (1fr,) * calc.min($witnesses-count$, 3), column-gutter: 10mm,
 $for(witnesses)$
-    person((role: [], company: [$witnesses.company$], name: [$witnesses.name$], title: [$witnesses.title$]), false),
+    person((role: [], company: [$witnesses.company$], name: [$witnesses.name$], title: [$witnesses.title$])),
 $endfor$
   )
 $endif$
@@ -129,11 +123,11 @@ $endfor$
 ]
 $endif$
 
-$if(kop)$
-// The letterhead of the BAST.
-#grid(columns: ($if(kop.logo)$24mm, $endif$1fr), column-gutter: 5mm, align: horizon,
-  $if(kop.logo)$image("$kop.logo$", width: 22mm),$endif$
-  [#text(14pt, weight: "bold", fill: accent)[$kop.name$] \ #text(9pt, fill: muted)[$kop.address$]],
+$if(letterhead)$
+// The letterhead of the handover certificate.
+#grid(columns: ($if(letterhead.logo)$24mm, $endif$1fr), column-gutter: 5mm, align: horizon,
+  $if(letterhead.logo)$image("$letterhead.logo$", width: 22mm),$endif$
+  [#text(14pt, weight: "bold", fill: accent)[$letterhead.name$] \ #text(9pt, fill: muted)[$letterhead.address$]],
 )
 #v(-1mm)
 #line(length: 100%, stroke: 1.4pt + accent)

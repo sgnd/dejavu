@@ -1,9 +1,0 @@
-# How a laptop reaches nusa.example.co.id, made by dejavu 1.1.0.
-direction: right
-laptop: "Your laptop" {shape: person}
-web: "Web pages\nhttps://*.nusa.example.co.id"
-laptop -> web: "HTTPS 443\nlisted IPs only"
-ssh: "SSH data1\n203.0.113.21:22"
-laptop -> ssh: "SSH key"
-private: "Private services\nS3, PostgreSQL, Redis" {shape: cylinder}
-ssh -> private: "SSH tunnel"

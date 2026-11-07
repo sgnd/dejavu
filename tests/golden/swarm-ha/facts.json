@@ -9,7 +9,7 @@
   "last_install": "2026-11-03",
   "state": "plain",
   "orchestrator": "swarm",
-  "domain": "nusa.example.co.id",
+  "domain": "northwind.example.org",
   "tls": "selfsigned",
   "acme_email": null,
   "acme_server": null,
@@ -162,18 +162,15 @@
       "primary_ip": "",
       "ha": false,
       "known": true,
-      "info": "https://authelia.nusa.example.co.id (user admin, password state/secrets/authelia_admin). Protect an app with the Traefik middleware authelia@file",
-      "about": {
-        "id": "Halaman login dengan faktor kedua (2FA) di depan halaman admin.",
-        "en": "A login page with a second factor (2FA) in front of the admin pages."
-      },
+      "info": "https://authelia.northwind.example.org (user admin, password state/secrets/authelia_admin). Protect an app with the Traefik middleware authelia@file",
+      "about": "A login page with a second factor (2FA) in front of the admin pages.",
       "web": [
         {
           "host": "authelia",
           "path": "/",
           "guard": "public",
           "login": "own",
-          "url": "https://authelia.nusa.example.co.id/"
+          "url": "https://authelia.northwind.example.org/"
         }
       ],
       "ports": [],
@@ -184,14 +181,8 @@
       "health": "POST /api/firstfactor",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Setelah instalasi, file users.yml di server pertama adalah sumber kebenaran untuk akun Authelia.",
-          "en": "After the install, users.yml on the first manager is the source of truth for Authelia's accounts."
-        },
-        {
-          "id": "Tidak ada server email. Kode 2FA pertama dan tautan reset ditulis ke /opt/ansibro/authelia/config/notification.txt di server pertama.",
-          "en": "There is no mail server. The first 2FA code and reset links are written to /opt/ansibro/authelia/config/notification.txt on the first manager."
-        }
+        "After the install, users.yml on the first manager is the source of truth for Authelia's accounts.",
+        "There is no mail server. The first 2FA code and reset links are written to /opt/ansibro/authelia/config/notification.txt on the first manager."
       ],
       "images": [
         {
@@ -217,10 +208,7 @@
       "ha": true,
       "known": true,
       "info": "S3 http://10.0.0.21:3900, region garage (access key = GK + state/secrets/garage_access_key, secret key = state/secrets/garage_secret_key)",
-      "about": {
-        "id": "Penyimpanan file kompatibel S3. Pada 3 server, setiap file disimpan 3 salinan.",
-        "en": "S3-compatible file storage. On 3 servers it keeps 3 copies of every file."
-      },
+      "about": "S3-compatible file storage. On 3 servers it keeps 3 copies of every file.",
       "web": [],
       "ports": [
         {
@@ -235,14 +223,8 @@
       "health": "TCP 3900",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Access key adalah \"GK\" diikuti isi file garage_access_key; region \"garage\". Jumlah salinan tidak bisa diubah setelah instalasi pertama.",
-          "en": "The access key is \"GK\" followed by the garage_access_key file; the region is \"garage\". The number of copies cannot change after the first install."
-        },
-        {
-          "id": "Mengubah file kunci menambah kunci kedua; kunci lama tetap berlaku sampai dihapus dengan perintah garage.",
-          "en": "Editing the key file adds a second key; the old key stays valid until it is deleted with the garage command."
-        }
+        "The access key is \"GK\" followed by the garage_access_key file; the region is \"garage\". The number of copies cannot change after the first install.",
+        "Editing the key file adds a second key; the old key stays valid until it is deleted with the garage command."
       ],
       "images": [
         {
@@ -263,18 +245,15 @@
       "primary_ip": "",
       "ha": false,
       "known": true,
-      "info": "https://portainer.nusa.example.co.id (user admin, password state/secrets/portainer_admin)",
-      "about": {
-        "id": "Halaman web untuk melihat dan mengelola container dan stack di cluster.",
-        "en": "A web page to see and manage the containers and stacks of the cluster."
-      },
+      "info": "https://portainer.northwind.example.org (user admin, password state/secrets/portainer_admin)",
+      "about": "A web page to see and manage the containers and stacks of the cluster.",
       "web": [
         {
           "host": "portainer",
           "path": "/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://portainer.nusa.example.co.id/"
+          "url": "https://portainer.northwind.example.org/"
         }
       ],
       "ports": [],
@@ -285,10 +264,7 @@
       "health": "POST /api/auth",
       "laptop": "web",
       "notes": [
-        {
-          "id": "File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.",
-          "en": "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
-        }
+        "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
       ],
       "images": [
         {
@@ -320,10 +296,7 @@
       "ha": true,
       "known": true,
       "info": "10.0.0.21:5432 (user postgres, password state/secrets/postgres)",
-      "about": {
-        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
-        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
-      },
+      "about": "An SQL database for your apps (and for Kong, Keycloak and Authelia).",
       "web": [],
       "ports": [
         {
@@ -338,14 +311,8 @@
       "health": "pg_isready",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
-          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
-        },
-        {
-          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
-          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
-        }
+        "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.",
+        "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
       ],
       "images": [
         {
@@ -383,10 +350,7 @@
       "ha": true,
       "known": true,
       "info": "10.0.0.21:6379 (password state/secrets/redis)",
-      "about": {
-        "id": "Penyimpanan key-value di memori, untuk cache dan sesi login.",
-        "en": "An in-memory key-value store, for cache and login sessions."
-      },
+      "about": "An in-memory key-value store, for cache and login sessions.",
       "web": [],
       "ports": [
         {
@@ -401,10 +365,7 @@
       "health": "redis-cli ping",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
-          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
-        }
+        "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
       ],
       "images": [
         {
@@ -425,18 +386,15 @@
       "primary_ip": "",
       "ha": false,
       "known": true,
-      "info": "https://traefik.nusa.example.co.id (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
-        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
-      },
+      "info": "https://traefik.northwind.example.org (user admin, password state/secrets/traefik_admin)",
+      "about": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.",
       "web": [
         {
           "host": "traefik",
           "path": "/dashboard/",
           "guard": "admin",
           "login": "layer",
-          "url": "https://traefik.nusa.example.co.id/dashboard/"
+          "url": "https://traefik.northwind.example.org/dashboard/"
         }
       ],
       "ports": [],
@@ -468,18 +426,15 @@
       "primary_ip": "10.0.0.22",
       "ha": false,
       "known": true,
-      "info": "https://uptimekuma.nusa.example.co.id (user admin, password state/secrets/uptimekuma_admin). Monitors for every web page are made for you",
-      "about": {
-        "id": "Memeriksa setiap menit bahwa halaman web Anda menjawab, dan memberi tahu bila ada yang mati.",
-        "en": "Checks every minute that your web pages answer, and tells you when one is down."
-      },
+      "info": "https://uptimekuma.northwind.example.org (user admin, password state/secrets/uptimekuma_admin). Monitors for every web page are made for you",
+      "about": "Checks every minute that your web pages answer, and tells you when one is down.",
       "web": [
         {
           "host": "uptimekuma",
           "path": "/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://uptimekuma.nusa.example.co.id/"
+          "url": "https://uptimekuma.northwind.example.org/"
         }
       ],
       "ports": [],
@@ -490,10 +445,7 @@
       "health": "TCP 3001",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Monitor dibuat sekali saat instalasi pertama. Notifikasi (email, Telegram, dan lainnya) harus diatur sendiri di Uptime Kuma.",
-          "en": "The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself."
-        }
+        "The monitors are made once, at the first install. Notifications (email, Telegram and so on) must be set up in Uptime Kuma itself."
       ],
       "images": [
         {
@@ -516,39 +468,36 @@
       "primary_ip": "10.0.0.21",
       "ha": false,
       "known": true,
-      "info": "Grafana https://grafana.nusa.example.co.id (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.nusa.example.co.id, metrics https://metrics.nusa.example.co.id/vmui, logs https://logs.nusa.example.co.id/select/vmui",
-      "about": {
-        "id": "Pemantauan lengkap. Metrik, log, aturan peringatan, Grafana, dan peringatan ke Telegram, email, atau webhook.",
-        "en": "Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook."
-      },
+      "info": "Grafana https://grafana.northwind.example.org (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.northwind.example.org, metrics https://metrics.northwind.example.org/vmui, logs https://logs.northwind.example.org/select/vmui",
+      "about": "Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook.",
       "web": [
         {
           "host": "grafana",
           "path": "/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://grafana.nusa.example.co.id/"
+          "url": "https://grafana.northwind.example.org/"
         },
         {
           "host": "alertmanager",
           "path": "/",
           "guard": "admin",
           "login": "layer",
-          "url": "https://alertmanager.nusa.example.co.id/"
+          "url": "https://alertmanager.northwind.example.org/"
         },
         {
           "host": "metrics",
           "path": "/vmui",
           "guard": "admin",
           "login": "layer",
-          "url": "https://metrics.nusa.example.co.id/vmui"
+          "url": "https://metrics.northwind.example.org/vmui"
         },
         {
           "host": "logs",
           "path": "/select/vmui",
           "guard": "admin",
           "login": "layer",
-          "url": "https://logs.nusa.example.co.id/select/vmui"
+          "url": "https://logs.northwind.example.org/select/vmui"
         }
       ],
       "ports": [],
@@ -560,10 +509,7 @@
       "health": "Watchdog alert",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Riwayat metrik dan log tidak ikut di-backup; yang di-backup adalah pengaturan, Grafana, dan Alertmanager.",
-          "en": "The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are."
-        }
+        "The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are."
       ],
       "images": [
         {
@@ -607,10 +553,7 @@
       "port": 5000,
       "version": "3.1.2",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
-        "en": "A private image registry on every manager. All servers pull images from it."
-      }
+      "about": "A private image registry on every manager. All servers pull images from it."
     },
     {
       "name": "database-proxy",
@@ -618,10 +561,7 @@
       "port": 5432,
       "version": "3.2.26",
       "license": "GPL-2.0",
-      "about": {
-        "id": "HAProxy di depan database ber-HA, selalu menuju server utama (primary).",
-        "en": "HAProxy in front of the HA database, always pointing at the primary."
-      }
+      "about": "HAProxy in front of the HA database, always pointing at the primary."
     },
     {
       "name": "etcd",
@@ -629,10 +569,7 @@
       "port": 12379,
       "version": "v3.6.16",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Penyimpanan kunci-nilai yang dipakai Patroni untuk memilih server utama PostgreSQL.",
-        "en": "The key-value store Patroni uses to elect the PostgreSQL primary."
-      }
+      "about": "The key-value store Patroni uses to elect the PostgreSQL primary."
     },
     {
       "name": "sentinel",
@@ -640,10 +577,7 @@
       "port": 26379,
       "version": "",
       "license": "",
-      "about": {
-        "id": "Mengawasi Redis atau Valkey dan memindahkan primary bila server utama mati.",
-        "en": "Watches Redis or Valkey and moves the primary when it goes down."
-      }
+      "about": "Watches Redis or Valkey and moves the primary when it goes down."
     },
     {
       "name": "monitoring-agents",
@@ -651,10 +585,7 @@
       "port": 9100,
       "version": "v1.12.1",
       "license": "Apache-2.0",
-      "about": {
-        "id": "node-exporter, cAdvisor, Vector, dan exporter database di setiap server, plus timer ansibro-metrics.",
-        "en": "node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer."
-      }
+      "about": "node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer."
     },
     {
       "name": "backup",
@@ -662,10 +593,7 @@
       "port": null,
       "version": "",
       "license": "BSD-2-Clause",
-      "about": {
-        "id": "Timer ansibro-backup dengan restic setiap malam di setiap server.",
-        "en": "The ansibro-backup timer with restic, every night on every server."
-      }
+      "about": "The ansibro-backup timer with restic, every night on every server."
     },
     {
       "name": "wireguard",
@@ -673,10 +601,7 @@
       "port": 51820,
       "version": "",
       "license": "GPL-2.0",
-      "about": {
-        "id": "Jaringan terenkripsi antar-server saja (bukan VPN untuk laptop).",
-        "en": "The encrypted network between the servers only (not a VPN for laptops)."
-      }
+      "about": "The encrypted network between the servers only (not a VPN for laptops)."
     }
   ],
   "backup": {

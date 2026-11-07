@@ -1,6 +1,6 @@
 [
   {
-    "url": "https://traefik.nusa.example.co.id/dashboard/",
+    "url": "https://traefik.northwind.example.org/dashboard/",
     "dns": [
       "203.0.113.11"
     ],
@@ -9,7 +9,7 @@
     "status": 302
   },
   {
-    "url": "https://portainer.nusa.example.co.id/",
+    "url": "https://portainer.northwind.example.org/",
     "dns": [
       "203.0.113.11"
     ],
@@ -18,7 +18,7 @@
     "status": 200
   },
   {
-    "url": "https://authelia.nusa.example.co.id/",
+    "url": "https://authelia.northwind.example.org/",
     "dns": [
       "203.0.113.11"
     ],
@@ -27,7 +27,7 @@
     "status": 200
   },
   {
-    "url": "https://grafana.nusa.example.co.id/",
+    "url": "https://grafana.northwind.example.org/",
     "dns": [
       "203.0.113.11"
     ],
@@ -36,7 +36,7 @@
     "status": 302
   },
   {
-    "url": "https://uptimekuma.nusa.example.co.id/",
+    "url": "https://uptimekuma.northwind.example.org/",
     "dns": [
       "203.0.113.11"
     ],

@@ -119,7 +119,7 @@ no_leak() {
 
 # Compare with tests/golden/<case>/ (UPDATE=1 writes them).
 golden() {
-  # Without PDFs the BAST annex lacks the PDF rows, so it can never match (and must not be written).
+  # Without PDFs the certificate's annex lacks the PDF rows, so it can never match (and must not be written).
   [ -n "$PDF" ] || return 0
   [ -z "${NO_GOLDEN:-}" ] || return 0
   g="$SRC/tests/golden/$1"
@@ -131,7 +131,7 @@ golden() {
     mkdir -p "$TMP/g/$1/$(dirname "$f")" && cp "$f" "$TMP/g/$1/$f"; done)
   (cd "$outdir/build" && find . -name '*.d2' | while read -r f; do
     mkdir -p "$TMP/g/$1/$(dirname "$f")" && cp "$f" "$TMP/g/$1/$f"; done)
-  # File hashes in the BAST change with every PDF build: compare without them.
+  # File hashes in the certificate change with every PDF build: compare without them.
   # shellcheck disable=SC2016 # backticks are Markdown here
   # The credentials file is new with every build (KeePass uses a random salt), and PDF sizes
   # depend on the tool versions: their hashes and sizes are not compared.
@@ -166,7 +166,7 @@ for c in ${CASES:-swarm-1-server swarm-ha k3s-ha stepca}; do
   golden "$c"
   # Sample PDFs for the release (fake data).
   if [ -n "${ARTIFACTS:-}" ] && [ "$c" = swarm-ha ] && [ -n "$PDF" ]; then
-    for p in "$outdir"/dist/*/*.pdf; do cp "$p" "$ARTIFACTS/sample-$(basename "$p")"; done
+    for p in "$outdir"/dist/*.pdf; do cp "$p" "$ARTIFACTS/sample-$(basename "$p")"; done
   fi
   # Every file is in SHA256SUMS, and every hash is right.
   if (cd "$outdir/dist" && { sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS; }) >/dev/null 2>&1; then pass; else fail "$c: SHA256SUMS does not match"; fi
@@ -202,17 +202,17 @@ if [ -n "$KP" ] && [ -d "$TMP/swarm-ha" ]; then
   kdbx="$(find "$TMP/$c/out/dist" -name '*.kdbx' | head -n 1)"
   phrase="$(cat "$TMP/$c/ansibro/state/handover/"*.passphrase)"
   want="$(cat "$TMP/$c/ansibro/state/secrets/postgres")"
-  got="$(printf '%s\n' "$phrase" | "$KP" show -q -s -a Password "$kdbx" "02 Database dan cache/PostgreSQL" 2>/dev/null || true)"
+  got="$(printf '%s\n' "$phrase" | "$KP" show -q -s -a Password "$kdbx" "02 Databases and cache/PostgreSQL" 2>/dev/null || true)"
   if [ "$got" = "$want" ]; then pass; else fail "the PostgreSQL password in the credentials file is wrong"; fi
   want="GK$(cat "$TMP/$c/ansibro/state/secrets/garage_access_key")"
-  got="$(printf '%s\n' "$phrase" | "$KP" show -q -a UserName "$kdbx" "03 Penyimpanan S3/Garage S3" 2>/dev/null || true)"
+  got="$(printf '%s\n' "$phrase" | "$KP" show -q -a UserName "$kdbx" "03 S3 storage/Garage S3" 2>/dev/null || true)"
   if [ "$got" = "$want" ]; then pass; else fail "the Garage access key in the credentials file is wrong"; fi
 fi
 
 # --- What must stop the build ---
 system minimal
 expect 3 build minimal                 # required answers are empty
-has "bast.number"
+has "certificate.number"
 expect 3 build minimal --draft         # a draft works, and asks to deliver the credentials file
 golden minimal
 # A secret pasted into handover.yml: exit 5, the secret's name is shown, its value is not.
@@ -232,10 +232,23 @@ system minimal
 touch "$TMP/minimal/ansibro/state.age"
 expect 1 build minimal --draft
 has "both state/ and state.age"
+# The output of dejavu 1.1 (a folder per language, the Indonesian credentials file name) is removed.
+system swarm-1-server
+expect 3 build swarm-1-server
+mkdir -p "$outdir/dist/id" "$outdir/build/en"
+echo old >"$outdir/dist/id/old.md"
+echo old >"$outdir/dist/northwind-kredensial.kdbx"
+expect 3 build swarm-1-server
+has "removed the output of an older dejavu"
+if [ -e "$outdir/dist/id" ] || [ -e "$outdir/build/en" ] || [ -e "$outdir/dist/northwind-kredensial.kdbx" ]; then
+  fail "the output of an older dejavu is still there"
+else
+  pass
+fi
 # A hand-edited document is kept.
 system swarm-1-server
 expect 3 build swarm-1-server
-echo "edited" >>"$(find "$outdir/dist" -name '*dokumentasi-teknis.md')"
+echo "edited" >>"$(find "$outdir/dist" -name '*technical-documentation.md')"
 expect 1 build swarm-1-server
 has "edited by hand"
 # The passphrase is never shown to a program (only to a person at a terminal).
