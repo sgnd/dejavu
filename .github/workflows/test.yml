@@ -16,7 +16,7 @@ permissions:
 
 env:
   GITHUB_TOKEN: ${{ github.token }} # mise downloads pandoc, Typst and d2 from GitHub
-  ANSIBRO_REF: v1.2.0 # the ansibro release dejavu is tested against (SKILL.md metadata.ansibro)
+  ANSIBRO_REF: v1.2.0 # the ansibro release dejavu is tested against (the newest release in the range of SKILL.md metadata.ansibro)
 
 jobs:
   # 1. The scripts have no common bugs, the skill file is valid, and the quick tests pass.

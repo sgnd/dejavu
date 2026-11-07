@@ -6,5 +6,5 @@
 
 - [ ] `tests/test.sh` passes in a container (see CONTRIBUTING.md), with `0 failed`
 - [ ] Templates: `id` and `en` changed together, and the golden files were written again and reviewed
-- [ ] `tests/drift.py` passes against the ansibro release in SKILL.md
+- [ ] `tests/drift.py` passes against the newest ansibro release in the SKILL.md range
 - [ ] The README and `skills/dejavu/SKILL.md` match the change

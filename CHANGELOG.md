@@ -4,7 +4,7 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 
 ## Unreleased
 
-- With an ansibro newer than 1.3.0, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
+- With an ansibro newer than 1.2, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
 - When `state/handover.json` no longer matches `config.yml` (other servers or apps), `facts` warns `handover-json-outdated`: the config changed after the last install.
 - A clear message when ansible is needed but not installed (also in `check`).
 - `state/handover.json` is also checked against the servers' addresses, roles, the app placement, the domain and TLS; a file in an unknown form falls back to ansible instead of stopping.
