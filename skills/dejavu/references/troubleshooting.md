@@ -1,6 +1,6 @@
 # Every message, and what to do
 
-Each line of `handover.py` starts with `ok:`, `warning: [id]`, `needs the user: [id]` or `failed: [id]`. Find the id here.
+Each line of `handover.py` starts with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:`. Find the id here.
 
 ## Warnings from `facts`: the user decides
 
@@ -29,9 +29,12 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `weak-secret` | A password in `config.yml` (backup or alerts) is shorter than 6 characters, so the leak check cannot search for it. | Recommend a longer one. |
 | `state-not-encrypted` | state/ is open (plain) while an age key exists. | Suggest `scripts/state.sh close` after the build. |
 | `check-failed` | ansibro's acceptance test has FAIL lines, or `tests/check.py` stopped with an error (then the last line says its exit code). | Explain each one; fix with consent, or record it as a known issue. |
+| `server-facts` | `check` could not read the servers' details (vCPU, memory, disk, OS, SSH host key) with ansible; its last message is shown. | Check that the servers are reachable over SSH from this machine, then run `check` again. The documents leave those details out. |
 | `logo` | A logo path in `handover.yml` is not a file. | Fix the path, or leave it empty. |
 | `open-warnings` | The build lists the warnings that are still open. | Make sure each was discussed. |
 | `keepassxc` (warning) | A draft was built without the credentials file. | Install keepassxc-cli before the final build. |
+| `brew` (warning) | `doctor --fix` could not install a tool with Homebrew. | Show the user the message; they run the brew command themselves. |
+| `python` | `doctor` runs with a Python older than 3.12, which ansibro needs: usually not ansibro's own `.venv/bin/python`. | Run dejavu with ansibro's `.venv/bin/python`. If that one is old, re-run ansibro's `./install.sh` (with consent) to rebuild `.venv/`. |
 
 ## Needs the user (exit 3)
 
@@ -43,9 +46,8 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `age` | macOS with Homebrew: `doctor --fix` installs it (ask first). Else: macOS `brew install age`, Linux `sudo apt-get install age` (the user runs it: it needs their password). |
 | `tools` | Ask the user, then run `doctor --fix`: it uses a mise that is already there (also Homebrew's, from brework) or installs one into `~/.local/bin` (no admin rights), then downloads pandoc, Typst and d2. It never changes shell files or mise's global config. Without network, or when it fails, the user installs mise (`curl https://mise.run \| sh`). |
 | `keepassxc` | macOS with Homebrew: ask the user, then run `doctor --fix` (it runs `brew install --cask keepassxc`). Otherwise the user installs it (it needs their password): macOS without Homebrew from keepassxc.org; Debian 13 or Ubuntu 26.04 `sudo apt-get install keepassxc-minimal`; Ubuntu 24.04 `sudo apt-get install keepassxc`; Fedora `sudo dnf install keepassxc`. |
-| `brew` (warning) | `doctor --fix` could not install a tool with Homebrew. | Show the user the message; they run the brew command themselves. |
 | `no-state`, `no-passphrase` | There is no state/ here: this is not the folder that ran `./install.sh`. Or run `build` first. |
-| `ssh-key` | dejavu made the client's SSH key (`ssh_handover: generated`). It is kept in `state/handover/`, so every build hands over the same key. | Ask the user to add `dist/<slug>_ed25519.pub` to `~/.ssh/authorized_keys` on every server before the handover meeting. |
+| `ssh-key` | dejavu made the client's SSH key (`ssh_handover: generated`). It is kept in `state/handover/`, so every build hands over the same key. Ask the user to add `dist/<slug>_ed25519.pub` to `~/.ssh/authorized_keys` on every server before the handover meeting. |
 | `deliver` | The pack is ready. Tell the user how to hand over the file and the passphrase (SKILL.md, step 7). |
 
 ## Failed (exit 1, 2, 4, 5)
