@@ -15,6 +15,8 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 - `scan` and `passphrase` work without `facts.json`.
 - `doctor --fix` installs the missing tools where no admin rights are needed: mise into `~/.local/bin`, and pandoc, Typst and d2 through mise (downloaded ahead, so the first build needs no network). On macOS with Homebrew it also installs KeePassXC, and age when `state.age` is used. Anything that needs `sudo` stays with the user. Running it again changes nothing.
 - dejavu shares one Mac with brework, ansibro and komando: it uses a mise that is already there (also Homebrew's in `/opt/homebrew/bin` or `/usr/local/bin` when it is not on PATH) instead of installing a second one, never reinstalls a KeePassXC.app that is there, finds Homebrew's brew and age off PATH, and only runs `mise exec` / `mise install tool@version`: it never edits `~/.zshrc`, `~/.bashrc` or mise's global config.
+- Ready for ansibro 1.3: the Kong admin key (`state/secrets/kong_admin_key`, Swarm) is in the credentials file and the documents, the technical documentation says how Kong's admin API is guarded, and the cache alert names the cache app (Redis or Valkey). `metadata.ansibro` covers 1.2 and 1.3 (`>=1.2.0 <1.4`).
+- CI also tests against ansibro main (every check except the golden files, also every Monday), so a change in ansibro that dejavu misses shows up before ansibro releases it.
 
 ## 1.0.0
 

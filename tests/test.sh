@@ -10,6 +10,8 @@
 #   ANSIBRO=DIR   an ansibro checkout (default: /ansibro, else ../ansibro next to this repo)
 #   UPDATE=1      write the golden files again (then review the diff)
 #   NO_PDF=1      skip the PDFs (faster)
+#   NO_GOLDEN=1   do not compare with tests/golden (they are made with the ansibro release in
+#                 test.yml's ANSIBRO_REF; CI sets this for its run against ansibro main)
 
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -117,6 +119,7 @@ no_leak() {
 
 # Compare with tests/golden/<case>/ (UPDATE=1 writes them).
 golden() {
+  [ -z "${NO_GOLDEN:-}" ] || return 0
   g="$SRC/tests/golden/$1"
   mkdir -p "$TMP/g"
   rm -rf "$TMP/g/$1"
@@ -243,10 +246,14 @@ expect 2 env DEJAVU_TEST= "$PY" "$H" facts --ansibro "$TMP/swarm-1-server/ansibr
 # Usage: same_facts CASE -> facts.json equals the golden one, apart from where the values came from
 same_facts() {
   if "$PY" - "$SRC/tests/golden/$1/facts.json" "$TMP/$1/out/facts.json" <<'PYEOF'
-import json, sys
+import json, os, sys
 want, got = (json.load(open(p)) for p in sys.argv[1:])
 src = got["sources"].pop("traefik_nodes, admin_sso, database, cache, monitoring app")
 want["sources"].pop("traefik_nodes, admin_sso, database, cache, monitoring app")
+if os.environ.get("NO_GOLDEN"):  # another ansibro than the golden files: its alerts may differ
+    for f in (want, got):
+        f.pop("alerts", None)
+        f.pop("ansibro", None)
 if src != "state/handover.json" or want != got:
     print("    source:", src)
     sys.exit(1)

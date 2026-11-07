@@ -1,7 +1,7 @@
 # What dejavu knows about ansibro's apps that ansibro has in no machine-readable form:
 # what each app is for, its web pages and how they are guarded, its ports, data, backup,
 # and every file in state/secrets with how to change it after the handover.
-# Checked against ansibro 1.2.0. tests/drift.py fails when ansibro adds an app or a secret
+# Checked against ansibro 1.2.0 and 1.3 (main). tests/drift.py fails when ansibro adds an app or a secret
 # that is not here. Every text has an Indonesian (id) and an English (en) version.
 ansibro: "1.2.0"
 
@@ -48,6 +48,9 @@ apps:
         en: Kong keeps its settings in the PostgreSQL database "kong". Your API services must join the network "kong".
       - id: Alamat kong.<domain> terbuka untuk umum; itulah alamat API Anda.
         en: kong.<domain> is open to anyone; it is the address of your APIs.
+      - when: swarm
+        id: API admin Kong (port 8001) hanya bisa dibuka lewat kong-manager.<domain>/api, di balik login admin. Sejak ansibro 1.3, Traefik menambahkan kunci state/secrets/kong_admin_key ke setiap panggilan, dan Kong menolak panggilan tanpa kunci itu.
+        en: Kong's admin API (port 8001) is reachable only at kong-manager.<domain>/api, behind the admin login. Since ansibro 1.3, Traefik adds the key state/secrets/kong_admin_key to every call, and Kong refuses calls without it.
 
   portainer:
     about:
@@ -411,6 +414,8 @@ secrets:
   traefik_admin: {app: traefik, when: always, change: file, audience: client, verified: true}
   traefik_salt: {app: traefik, when: always, change: internal, audience: internal, verified: true}
   kong_db: {app: kong, when: always, change: file, audience: internal, verified: true}
+  # ansibro 1.3+, Swarm only: Traefik adds it to admin API calls, Kong checks it (optional: 1.2 has none).
+  kong_admin_key: {app: kong, when: optional, change: file, audience: internal, verified: false}
   portainer_admin: {app: portainer, when: always, change: app, audience: client, verified: true}
   portainer_agent_secret: {app: portainer, when: optional, change: internal, audience: internal, verified: true}
   swarmpit_admin: {app: swarmpit, when: always, change: app, audience: client, verified: true}

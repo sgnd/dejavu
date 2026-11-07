@@ -5,7 +5,7 @@ license: MIT
 compatibility: macOS or Linux, inside an ansibro (1.2 or newer) folder where ./install.sh ran. Needs ansibro's .venv, mise (for pandoc, Typst and d2), keepassxc-cli, and age when the state is encrypted (state.age).
 metadata:
   version: "1.0.0"
-  ansibro: ">=1.2.0 <1.3"
+  ansibro: ">=1.2.0 <1.4"
 ---
 
 # dejavu: the handover pack for an ansibro system
