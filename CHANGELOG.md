@@ -2,8 +2,9 @@
 
 Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `install.sh` installs the newest one.
 
-## Unreleased
+## 1.1.0
 
+- Releases record how `dejavu-skill.tar.gz` and `install.sh` were built (GitHub build provenance). Check a download with `gh attestation verify dejavu-skill.tar.gz --repo sgnd/dejavu`. The GitHub Actions in CI are pinned to commits.
 - With an ansibro newer than 1.2, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
 - When `state/handover.json` no longer matches `config.yml` (other servers or apps), `facts` warns `handover-json-outdated`: the config changed after the last install.
 - A clear message when ansible is needed but not installed (also in `check`).
@@ -17,6 +18,13 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 - dejavu shares one Mac with brework, ansibro and komando: it uses a mise that is already there (also Homebrew's in `/opt/homebrew/bin` or `/usr/local/bin` when it is not on PATH) instead of installing a second one, never reinstalls a KeePassXC.app that is there, finds Homebrew's brew and age off PATH, and only runs `mise exec` / `mise install tool@version`: it never edits `~/.zshrc`, `~/.bashrc` or mise's global config.
 - Ready for ansibro 1.3: the Kong admin key (`state/secrets/kong_admin_key`, Swarm) is in the credentials file and the documents, the technical documentation says how Kong's admin API is guarded, and the cache alert names the cache app (Redis or Valkey). `metadata.ansibro` covers 1.2 and 1.3 (`>=1.2.0 <1.4`).
 - CI also tests against ansibro main (every check except the golden files, also every Monday), so a change in ansibro that dejavu misses shows up before ansibro releases it.
+- A wrong age key for `state.age` now stops with `failed [age]` and age's own message, instead of a Python traceback.
+- A `handover.yml` that is not valid YAML, or a `people:` entry that is not `name:/os:/persona:`, now stops with `failed [answers]` (exit 2) instead of a traceback.
+- `check` warns `server-facts` when ansible could not read the servers' details, and counts only the servers it reached. A garbled answer from one server no longer stops it.
+- `doctor` prints the dejavu version first, `handover.py --version` prints it, and `--help` lists the commands and exit codes.
+- The passphrase and SSH key files in `state/handover/` are set to mode 600 on every write, also when they already existed with a wider mode.
+- Docs: the message prefixes are written as dejavu prints them (`warning [id]:`, not `warning: [id]`); the troubleshooting tables lost their broken rows and gained `python` and `server-facts`; SECURITY.md says that S3 access key IDs are on keepassxc-cli's command line, that attachments touch a private temp folder for a moment, and how `doctor --fix` gets mise; the README links the troubleshooting guide and says how to update and remove the skill.
+- Tests: `NO_PDF=1` skips the golden comparison (the goldens list the PDFs), so it can pass. CI runs `apt-get update` before installing.
 
 ## 1.0.0
 

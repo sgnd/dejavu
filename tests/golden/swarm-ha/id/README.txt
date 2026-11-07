@@ -4,7 +4,7 @@ PAKET SERAH TERIMA: Produksi (nusa.example.co.id)
 Klien:   PT Maju Bersama
 Vendor:  PT Nusantara Teknologi
 Tanggal: 4 November 2026
-Dibuat dengan dejavu 1.0.0 dari ansibro 1.2.0.
+Dibuat dengan dejavu 1.1.0 dari ansibro 1.2.0.
 
 Tidak ada file di paket ini yang memuat kata sandi, kecuali file kredensial,
 yang terenkripsi. Frasa sandi pembukanya tidak pernah ada di paket ini.

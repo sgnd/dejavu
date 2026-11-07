@@ -21,9 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # to publish the release
+      id-token: write # to sign the build provenance
+      attestations: write # to store it on GitHub
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with: { name: samples, path: samples }
       - name: Check the version, and write the release notes from CHANGELOG.md
         run: |
@@ -47,6 +49,12 @@ jobs:
           tar -czf dejavu-skill.tar.gz --exclude __pycache__ -C skills dejavu
           sha256sum dejavu-skill.tar.gz >SHA256SUMS
           ls samples
+      - name: Record how the files were built (check with gh attestation verify)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dejavu-skill.tar.gz
+            install.sh
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}

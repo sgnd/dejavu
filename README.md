@@ -48,7 +48,13 @@ Paste this into a [terminal](#words-used-here):
 curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/install.sh | sh
 ```
 
-It downloads the newest release, checks it, and adds the skill to every AI agent on your computer. Run it again to update. You can also ask your agent: "Install the dejavu skill from github.com/sgnd/dejavu".
+It downloads the newest release, checks it, and adds the skill to every AI agent on your computer. Run it again to update. You can also ask your agent to run the install command above.
+
+### Update and remove
+
+- **Update:** run the install command again. It replaces the skill with the newest release.
+- **Remove:** delete the `skills/dejavu` folder of each agent that has it: `~/.claude/skills/dejavu`, `~/.codex/skills/dejavu`, `~/.gemini/skills/dejavu`, `~/.config/agents/skills/dejavu` and `~/.agents/skills/dejavu` (under `$CLAUDE_CONFIG_DIR` or `$CODEX_HOME` when you set them).
+- Removing the skill leaves the ansibro folder alone. Keep `state/handover/` there: it holds the passphrase of the credentials files you delivered (and the client's SSH key with `ssh_handover: generated`). Without it, the next handover gets a new passphrase.
 
 ## Use
 
@@ -59,6 +65,8 @@ It downloads the newest release, checks it, and adds the skill to every AI agent
 5. It makes a draft. Read it, correct what is wrong (tell the agent), and it makes the final version.
 
 Everything ends up in one folder, `~/Handover/<domain>-config/dist/` by default.
+
+When something stops, every message has an id, and [the troubleshooting guide](skills/dejavu/references/troubleshooting.md) says what it means and what to do.
 
 ## Hand it over
 

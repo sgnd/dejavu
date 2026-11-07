@@ -1,4 +1,4 @@
-# SSH settings for PT Maju Bersama (maju.example.id), made by dejavu 1.0.0.
+# SSH settings for PT Maju Bersama (maju.example.id), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 

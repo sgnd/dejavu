@@ -204,6 +204,12 @@ class Answers(unittest.TestCase):
         self.assertIn("bast.number", missing)
         self.assertNotIn("client.name", missing)
 
+    def test_bad_yaml_is_an_answers_error(self):
+        for text in ("client: [\n", "- just\n- a list\n", "people:\n  - alice\n", "people: alice\n"):
+            with self.assertRaises(h.Stop) as e:
+                self.answers(text)
+            self.assertEqual(e.exception.code, 2, text)
+
     def test_example_is_valid(self):
         with open(os.path.join(h.ASSETS, "handover.example.yml"), encoding="utf-8") as f:
             a = self.answers(f.read().replace("  # SERVERS", "  server1: {public_ip: null}"))
@@ -318,6 +324,86 @@ class Doctor(unittest.TestCase):
         self.assertEqual(self.doctor("linux", {}), 0)
         for name, ver in h.TOOLS.items():
             self.assertIn(["/home/u/.local/bin/mise", "install", f"{name}@{ver}"], self.ran)
+
+
+class State(unittest.TestCase):
+    """state.age with a fake age, and the files dejavu keeps in state/handover/."""
+
+    def setUp(self):
+        self.saved = (h.find_age, os.environ.get("ANSIBRO_KEY"))
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = self.tmp.name
+        os.environ["ANSIBRO_KEY"] = os.path.join(self.dir, "age.key")
+        with open(os.environ["ANSIBRO_KEY"], "w", encoding="utf-8") as f:
+            f.write("AGE-SECRET-KEY-TEST\n")
+
+    def tearDown(self):
+        h.find_age, key = self.saved
+        if key is None:
+            os.environ.pop("ANSIBRO_KEY", None)
+        else:
+            os.environ["ANSIBRO_KEY"] = key
+        self.tmp.cleanup()
+
+    def fake_age(self, script):
+        age = os.path.join(self.dir, "age")
+        with open(age, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n" + script + "\n")
+        os.chmod(age, 0o755)
+        h.find_age = lambda: age
+        with open(os.path.join(self.dir, "state.age"), "wb") as f:
+            f.write(b"not really encrypted")
+
+    def test_wrong_age_key_is_failed_age(self):
+        self.fake_age('echo "age: error: no identity matched any of the recipients" >&2; exit 1')
+        with self.assertRaises(h.Stop) as e:
+            h.Ansibro(self.dir, "config.yml").secret_names()
+        self.assertEqual(e.exception.code, 1)
+
+    def test_not_a_tar_is_failed_age(self):
+        self.fake_age("echo garbage")
+        with self.assertRaises(h.Stop) as e:
+            h.Ansibro(self.dir, "config.yml").secret_names()
+        self.assertEqual(e.exception.code, 1)
+
+    def test_handover_file_mode_is_tightened(self):
+        d = os.path.join(self.dir, "state", "handover")
+        os.makedirs(d)
+        path = os.path.join(d, "x.passphrase")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("old\n")
+        os.chmod(path, 0o644)
+        h.Ansibro(self.dir, "config.yml").write_handover_file("x.passphrase", "new")
+        self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+
+
+class ServerFacts(unittest.TestCase):
+    """check's server details from a faked ansible: a failed run and a bad answer are never a crash."""
+
+    def setUp(self):
+        self.saved = (h.run, h.Ansibro.ansible)
+        h.Ansibro.ansible = lambda self, why: "ansible"
+        self.ab = h.Ansibro(tempfile.gettempdir(), "config.yml")
+
+    def tearDown(self):
+        h.run, h.Ansibro.ansible = self.saved
+
+    def facts(self, code, out, err=""):
+        h.run = lambda cmd, **kw: h.subprocess.CompletedProcess(cmd, code, out, err)
+        return h.server_facts(self.ab)
+
+    def test_ansible_failure_gives_no_servers(self):
+        self.assertEqual(self.facts(1, "", "ERROR! the inventory could not be parsed"), {})
+
+    def test_bad_json_is_not_reached(self):
+        good = '{"ansible_facts": {"ansible_processor_vcpus": 2, "ansible_memtotal_mb": 2048}}'
+        got = self.facts(2, f"server1 | SUCCESS => {good}\nserver2 | SUCCESS => {{not json\n")
+        self.assertEqual(got["server1"]["vcpu"], 2)
+        self.assertEqual(got["server2"], {"reached": False})
+
+    def test_plural(self):
+        self.assertEqual(h.plural(1, "server"), "1 server")
+        self.assertEqual(h.plural(3, "server"), "3 servers")
 
 
 if __name__ == "__main__":

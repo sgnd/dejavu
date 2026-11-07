@@ -22,7 +22,7 @@ cover:
     - {label: "Tanggal", value: "4 November 2026"}
     - {label: "Klasifikasi", value: "TERBATAS"}
     - {label: "Distribusi", value: "Hanya untuk CV Demo dan Vendor"}
-  footer: "Dibuat dengan dejavu 1.0.0 dari ansibro 1.2.0. Dokumen ini tidak memuat kata sandi apa pun. Dokumen ini menjelaskan cara masuk ke sistem, jadi jaga kerahasiaannya."
+  footer: "Dibuat dengan dejavu 1.1.0 dari ansibro 1.2.0. Dokumen ini tidak memuat kata sandi apa pun. Dokumen ini menjelaskan cara masuk ke sistem, jadi jaga kerahasiaannya."
 ---
 
 # Pengendalian dokumen {#control .unnumbered}
@@ -35,7 +35,7 @@ cover:
 
 Riwayat revisi: *belum ada catatan*.
 
-Dokumen ini dibuat dengan dejavu 1.0.0 dari ansibro 1.2.0, konfigurasi `config`, instalasi terakhir 3 November 2026.
+Dokumen ini dibuat dengan dejavu 1.1.0 dari ansibro 1.2.0, konfigurasi `config`, instalasi terakhir 3 November 2026.
 Dokumen ini tidak memuat kata sandi. Semua kata sandi ada di file kredensial `cv-demo-kredensial.kdbx`.
 Jika suatu jawaban belum diberikan, teks menulis *Belum diisi*.
 
@@ -970,7 +970,7 @@ Berita acara serah terima memuat daftar periksa untuk sesi serah terima (lampira
 | docker-buildx-plugin | 0.38.1-1 |
 | docker-compose-plugin | 5.6.1-1 |
 | ansibro | 1.2.0 |
-| dejavu | 1.0.0 |
+| dejavu | 1.1.0 |
 
 Digest adalah 12 karakter pertama sidik jari image (sha256). Digest memastikan image yang dipakai persis sama.
 
@@ -1010,7 +1010,7 @@ apps:
 Baris-baris berikut dimasukkan ke file pengaturan SSH di laptop (`~/.ssh/config`; di Windows `%USERPROFILE%\.ssh\config`). Baris yang sama ada di file `ssh_config.txt`.
 
 ```text
-# SSH settings for CV Demo (demo.example.net), made by dejavu 1.0.0.
+# SSH settings for CV Demo (demo.example.net), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 

@@ -4,7 +4,7 @@ description: Make the complete handover pack for a server system built with ansi
 license: MIT
 compatibility: macOS or Linux, inside an ansibro (1.2 or newer) folder where ./install.sh ran. Needs ansibro's .venv, mise (for pandoc, Typst and d2), keepassxc-cli, and age when the state is encrypted (state.age).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   ansibro: ">=1.2.0 <1.4"
 ---
 
@@ -53,7 +53,7 @@ Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and
 | `scan` | Searches the output for secret values (`build` does this too). |
 | `passphrase` | Shows the credentials file's passphrase, only in a real terminal: the user runs it, not you. |
 
-Status lines start with `ok:`, `warning: [id]`, `needs the user: [id]` or `failed: [id]` (lists, like the answers that are still empty, follow on indented lines). Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed (a bug: report it), 5 a secret reached a document (the files of that run are deleted), 130 stopped with Ctrl-C (state/ is closed again). Every id is explained in [references/troubleshooting.md](references/troubleshooting.md).
+Status lines start with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:` (lists, like the answers that are still empty, follow on indented lines). Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed (a bug: report it), 5 a secret reached a document (the files of that run are deleted), 130 stopped with Ctrl-C (state/ is closed again). Every id is explained in [references/troubleshooting.md](references/troubleshooting.md).
 
 ## The steps
 
@@ -63,7 +63,7 @@ Status lines start with `ok:`, `warning: [id]`, `needs the user: [id]` or `faile
 4. **Facts and warnings.** Run `facts`. Go through each warning with the user (references/troubleshooting.md says what each means). For each, the user decides: fix it (a change in `config.yml` and `./install.sh`, only with their consent) or accept it. Write an accepted one into `known_issues` in the user's words.
 5. **Acceptance test (ask first).** "May I run ansibro's own test now? It logs in to every app over SSH and changes nothing." If yes, run `check`. Explain any FAIL line; fix it with consent, or record it as a known issue. Without a check, the BAST says "not tested" instead of "in good condition".
 6. **Build.** Run `build --draft` first, read the Markdown in `dist/` with the user (it has no secrets), correct wording in `handover.yml`, and build again. When every required answer is in, run `build` without `--draft`. The first build makes the passphrase and keeps it in `state/handover/` (encrypted with state.age when that is on).
-7. **Deliver.** `build` ends with `needs the user: [deliver]`. Tell the user, in plain words:
+7. **Deliver.** `build` ends with `needs the user [deliver]:`. Tell the user, in plain words:
    - Send the PDFs (and the Markdown if wanted) by email or a shared folder.
    - Hand over the `.kdbx` file on another channel (for example a USB stick in person).
    - Read the passphrase in your own Terminal with the command the build printed, and say it to the named recipient by phone or in person. Never in the same message as the file.

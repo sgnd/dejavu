@@ -24,9 +24,9 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: shellcheck -s sh install.sh tests/test.sh
-      - run: sudo apt-get install -y dash python3-yaml python3-jinja2 python3-cryptography && dash -n install.sh && dash -n tests/test.sh
+      - run: sudo apt-get update -qq && sudo apt-get install -y dash python3-yaml python3-jinja2 python3-cryptography && dash -n install.sh && dash -n tests/test.sh
       - run: python3 -m py_compile skills/dejavu/scripts/handover.py tests/*.py
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: SKILL.md follows the Agent Skills format
@@ -53,14 +53,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { repository: sgnd/ansibro, ref: "${{ env.ANSIBRO_REF }}", path: ansibro }
       - run: mkdir -p samples
       - run: >-
           docker run --rm -e GITHUB_TOKEN -e ARTIFACTS=/samples -v "$PWD:/src:ro" -v "$PWD/ansibro:/ansibro:ro"
           -v "$PWD/samples:/samples" ${{ matrix.image }} sh /src/tests/test.sh --install
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: matrix.image == 'debian:13-slim' && matrix.runner == 'ubuntu-latest'
         with: { name: samples, path: samples/ }
 
@@ -72,8 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { repository: sgnd/ansibro, ref: main, path: ansibro }
       - name: Which ansibro main
         run: git -C ansibro log -1 --format='%h %s'
@@ -87,8 +87,8 @@ jobs:
     runs-on: macos-latest # Apple Silicon
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { repository: sgnd/ansibro, ref: "${{ env.ANSIBRO_REF }}", path: ansibro }
       - run: brew install mise age poppler && brew install --cask keepassxc
       - run: python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -q pyyaml jinja2 cryptography
