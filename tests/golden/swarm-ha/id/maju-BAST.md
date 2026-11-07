@@ -58,11 +58,12 @@ Sistem diserahkan dalam keadaan baik dan berfungsi: uji terima tanggal 2026-11-0
 | 8 | Panduan akses laptop (Linux) | `id/maju-panduan-laptop-linux.pdf`, versi 1.0 | Lengkap | SHA-<size> `<sha<size>>` (Lampiran 3) |
 | 9 | Panduan akses laptop (macOS) | `id/maju-panduan-laptop-macos.pdf`, versi 1.0 | Lengkap | SHA-<size> `<sha<size>>` (Lampiran 3) |
 | 10 | Panduan akses laptop (Windows) | `id/maju-panduan-laptop-windows.pdf`, versi 1.0 | Lengkap | SHA-<size> `<sha<size>>` (Lampiran 3) |
-| 11 | Pengaturan SSH untuk laptop | `ssh_config.txt` | Lengkap | SHA-256 `<sha256>` (Lampiran 3) |
-| 12 | File kredensial (terenkripsi) | `maju-kredensial.kdbx`, <size> byte; diserahkan melalui USB diserahkan langsung pada 4 November <size> | Lengkap, terenkripsi | SHA-<size> `<sha<size>>` (Lampiran 3). Kata sandi pembuka disampaikan terpisah melalui telepon kepada Siti Rahma. Dokumen ini dan dokumen teknis tidak memuat kata sandi. |
-| 13 | Domain dan DNS | nusa.example.co.id; DNS: DNS publik di Cloudflare | Digunakan | Pemilik domain: PT Maju Bersama |
-| 14 | Repositori backup | restic, s3 di s3.example.com, setiap malam pukul 02:00 (UTC) | Digunakan | Kata sandinya ada di file kredensial, grup "05 Pemulihan (darurat)" |
-| 15 | Akun | Hanya nama, tanpa nilai: lihat Lampiran 2 | Diserahkan | Nilainya hanya ada di file kredensial |
+| 11 | Kunci publik SSH milik Klien | `maju_ed25519.pub` | Lengkap | SHA-256 `<sha256>` (Lampiran 3) |
+| 12 | Pengaturan SSH untuk laptop | `ssh_config.txt` | Lengkap | SHA-256 `<sha256>` (Lampiran 3) |
+| 13 | File kredensial (terenkripsi) | `maju-kredensial.kdbx`, <size> byte; diserahkan melalui USB diserahkan langsung pada 4 November <size> | Lengkap, terenkripsi | SHA-<size> `<sha<size>>` (Lampiran 3). Kata sandi pembuka disampaikan terpisah melalui telepon kepada Siti Rahma. Dokumen ini dan dokumen teknis tidak memuat kata sandi. |
+| 14 | Domain dan DNS | nusa.example.co.id; DNS: DNS publik di Cloudflare | Digunakan | Pemilik domain: PT Maju Bersama |
+| 15 | Repositori backup | restic, s3 di s3.example.com, setiap malam pukul 02:00 (UTC) | Digunakan | Kata sandinya ada di file kredensial, grup "05 Pemulihan (darurat)" |
+| 16 | Akun | Hanya nama, tanpa nilai: lihat Lampiran 2 | Diserahkan | Nilainya hanya ada di file kredensial |
 
 ## 2. Kewajiban setelah serah terima {#bast-duties}
 
@@ -190,6 +191,7 @@ Setiap file beserta ukuran dan kode SHA-256-nya (sidik jari isi file: perubahan 
 | `id/maju-panduan-laptop-macos.pdf` | <size> | `<sha<size>>` `<sha<size>>` |
 | `id/maju-panduan-laptop-windows.pdf` | <size> | `<sha<size>>` `<sha<size>>` |
 | `maju-kredensial.kdbx` | <size> | `<sha<size>>` `<sha<size>>` |
+| `maju_ed25519.pub` | 93 | `<sha256>` `<sha256>` |
 | `ssh_config.txt` | 2.148 | `<sha256>` `<sha256>` |
 
 Cara memeriksa sebuah file: `Get-FileHash <file> -Algorithm SHA256` (Windows), `shasum -a 256 <file>` (macOS), `sha256sum <file>` (Linux).

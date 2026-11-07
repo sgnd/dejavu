@@ -6,7 +6,13 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 
 - With ansibro 1.3 and newer, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
 - When `state/handover.json` no longer matches `config.yml` (other servers or apps), `facts` warns `handover-json-outdated`: the config changed after the last install.
-- A clear message when ansible is needed but not installed.
+- A clear message when ansible is needed but not installed (also in `check`).
+- `state/handover.json` is also checked against the servers' addresses, roles, the app placement, the domain and TLS; a file in an unknown form falls back to ansible instead of stopping.
+- The credentials file is made again when a password or an attached file changed, not only when the list of passwords changed.
+- `check` no longer reports a crashed acceptance test as passed: it is recorded as a FAIL.
+- `ssh_handover: generated`: the client's key is made once and kept in `state/handover/`, its public key is written next to the documents (`<slug>_ed25519.pub`), and `build` says to put it on the servers.
+- Encrypted state: closed exactly once after Ctrl-C, a failed close in `check` is reported, and `state.age` is decrypted once per run instead of for every step.
+- `scan` and `passphrase` work without `facts.json`.
 - `doctor --fix` installs the missing tools where no admin rights are needed: mise into `~/.local/bin`, and pandoc, Typst and d2 through mise (downloaded ahead, so the first build needs no network). On macOS with Homebrew it also installs KeePassXC, and age when `state.age` is used. Anything that needs `sudo` stays with the user. Running it again changes nothing.
 - dejavu shares one Mac with brework, ansibro and komando: it uses a mise that is already there (also Homebrew's in `/opt/homebrew/bin` or `/usr/local/bin` when it is not on PATH) instead of installing a second one, never reinstalls a KeePassXC.app that is there, finds Homebrew's brew and age off PATH, and only runs `mise exec` / `mise install tool@version`: it never edits `~/.zshrc`, `~/.bashrc` or mise's global config.
 

@@ -57,11 +57,12 @@ The system is in good and working order: the acceptance test of 2026-11-04 passe
 | 8 | Laptop access guide (Linux) (Indonesian) | `id/maju-panduan-laptop-linux.pdf`, version 1.0 | Complete | SHA-<size> `<sha<size>>` (Annex 3) |
 | 9 | Laptop access guide (macOS) (Indonesian) | `id/maju-panduan-laptop-macos.pdf`, version 1.0 | Complete | SHA-<size> `<sha<size>>` (Annex 3) |
 | 10 | Laptop access guide (Windows) (Indonesian) | `id/maju-panduan-laptop-windows.pdf`, version 1.0 | Complete | SHA-<size> `<sha<size>>` (Annex 3) |
-| 11 | SSH settings for laptops | `ssh_config.txt` | Complete | SHA-256 `<sha256>` (Annex 3) |
-| 12 | Credentials file (encrypted) | `maju-kredensial.kdbx`, <size> bytes; handed over via USB diserahkan langsung on Wednesday, 4 November <size> | Complete, encrypted | SHA-<size> `<sha<size>>` (Annex 3). The passphrase was given separately via telepon to Siti Rahma. These documents contain no passwords. |
-| 13 | Domain and DNS | nusa.example.co.id; DNS: public DNS at Cloudflare | In use | Domain holder: PT Maju Bersama |
-| 14 | Backup repository | restic, s3 at s3.example.com, every night at 02:00 (UTC) | In use | Its password is in the credentials file, group "05 Pemulihan (darurat)" |
-| 15 | Accounts | Names only, no values: see Annex 2 | Handed over | Values only in the credentials file |
+| 11 | The Client's SSH public key | `maju_ed25519.pub` | Complete | SHA-256 `<sha256>` (Annex 3) |
+| 12 | SSH settings for laptops | `ssh_config.txt` | Complete | SHA-256 `<sha256>` (Annex 3) |
+| 13 | Credentials file (encrypted) | `maju-kredensial.kdbx`, <size> bytes; handed over via USB diserahkan langsung on Wednesday, 4 November <size> | Complete, encrypted | SHA-<size> `<sha<size>>` (Annex 3). The passphrase was given separately via telepon to Siti Rahma. These documents contain no passwords. |
+| 14 | Domain and DNS | nusa.example.co.id; DNS: public DNS at Cloudflare | In use | Domain holder: PT Maju Bersama |
+| 15 | Backup repository | restic, s3 at s3.example.com, every night at 02:00 (UTC) | In use | Its password is in the credentials file, group "05 Pemulihan (darurat)" |
+| 16 | Accounts | Names only, no values: see Annex 2 | Handed over | Values only in the credentials file |
 
 ## 2. Duties after receipt {#bast-duties}
 
@@ -189,6 +190,7 @@ Each file with its size and SHA-256 code (a fingerprint of its content: the smal
 | `id/maju-panduan-laptop-macos.pdf` | <size> | `<sha<size>>` `<sha<size>>` |
 | `id/maju-panduan-laptop-windows.pdf` | <size> | `<sha<size>>` `<sha<size>>` |
 | `maju-kredensial.kdbx` | <size> | `<sha<size>>` `<sha<size>>` |
+| `maju_ed25519.pub` | 93 | `<sha256>` `<sha256>` |
 | `ssh_config.txt` | 2,148 | `<sha256>` `<sha256>` |
 
 To check a file: `Get-FileHash <file> -Algorithm SHA256` (Windows), `shasum -a 256 <file>` (macOS), `sha256sum <file>` (Linux).
