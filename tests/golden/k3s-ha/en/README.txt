@@ -4,7 +4,7 @@ HANDOVER PACK: Production (platform.example.com)
 Client: PT Maju Bersama
 Vendor: PT Nusantara Teknologi
 Date:   Wednesday, 4 November 2026
-Made with dejavu 1.0.0 from ansibro 1.2.0.
+Made with dejavu 1.1.0 from ansibro 1.2.0.
 
 None of these files contains a password, except the credentials file, which
 is encrypted. Its passphrase is never in this pack.

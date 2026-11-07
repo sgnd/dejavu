@@ -22,7 +22,7 @@ cover:
     - {label: "Versi", value: "1.0"}
     - {label: "Tanggal", value: "Belum diisi"}
     - {label: "Klasifikasi", value: "TERBATAS"}
-  footer: "Dibuat dengan dejavu 1.0.0 dari ansibro 1.2.0. Panduan ini tidak memuat kata sandi; semua kata sandi hanya ada di file kredensial yang terenkripsi."
+  footer: "Dibuat dengan dejavu 1.1.0 dari ansibro 1.2.0. Panduan ini tidak memuat kata sandi; semua kata sandi hanya ada di file kredensial yang terenkripsi."
 ---
 
 # Akses dari laptop (macOS) {#guide}

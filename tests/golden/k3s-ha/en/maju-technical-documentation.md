@@ -20,7 +20,7 @@ cover:
     - {label: "Date", value: "Wednesday, 4 November 2026"}
     - {label: "Classification", value: "CONFIDENTIAL"}
     - {label: "Distribution", value: "PT Maju Bersama and PT Nusantara Teknologi only"}
-  footer: "Made with dejavu 1.0.0 from ansibro 1.2.0. This document holds no password. It describes how the system is reached, so keep it confidential."
+  footer: "Made with dejavu 1.1.0 from ansibro 1.2.0. This document holds no password. It describes how the system is reached, so keep it confidential."
 ---
 
 # Document control {#control .unnumbered}
@@ -35,7 +35,7 @@ cover:
 |:--------|:-----------|:----------------|:-----------------------------------------|
 | 1.0 | 2026-11-04 | Rina Wijaya | Terbitan pertama |
 
-This document was made with dejavu 1.0.0 from ansibro 1.2.0, configuration `config`, last install Tuesday, 3 November 2026.
+This document was made with dejavu 1.1.0 from ansibro 1.2.0, configuration `config`, last install Tuesday, 3 November 2026.
 It contains no password. Every password is in the credentials file `maju-credentials.kdbx`.
 Where an answer was not given, the text says *Not provided*.
 
@@ -202,7 +202,7 @@ Apps that run on a fixed server (all other apps run in the cluster):
 There is no DNS for `platform.example.com`. Each laptop adds these lines to its *hosts file* (the file `hosts.txt` holds the same lines):
 
 ```text
-# Lines for the hosts file of platform.example.com, made by dejavu 1.0.0.
+# Lines for the hosts file of platform.example.com, made by dejavu 1.1.0.
 # Use them only when there is no DNS for *.platform.example.com. One address per name: no failover.
 203.0.113.31  beszel.platform.example.com
 203.0.113.31  keycloak.platform.example.com
@@ -1231,7 +1231,7 @@ The handover certificate has a checklist for the handover session (its first att
 | docker-compose-plugin | 5.6.1-1 |
 | k3s | v1.36.5+k3s1 |
 | ansibro | 1.2.0 |
-| dejavu | 1.0.0 |
+| dejavu | 1.1.0 |
 
 The digest is the first 12 characters of the image's fingerprint (sha256). It pins the exact image.
 
@@ -1295,7 +1295,7 @@ apps:
 These lines go into the SSH settings file of a laptop (`~/.ssh/config`; on Windows `%USERPROFILE%\.ssh\config`). The same lines are in the file `ssh_config.txt`.
 
 ```text
-# SSH settings for PT Maju Bersama (platform.example.com), made by dejavu 1.0.0.
+# SSH settings for PT Maju Bersama (platform.example.com), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 

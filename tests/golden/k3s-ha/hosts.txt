@@ -1,4 +1,4 @@
-# Lines for the hosts file of platform.example.com, made by dejavu 1.0.0.
+# Lines for the hosts file of platform.example.com, made by dejavu 1.1.0.
 # Use them only when there is no DNS for *.platform.example.com. One address per name: no failover.
 203.0.113.31  beszel.platform.example.com
 203.0.113.31  keycloak.platform.example.com

@@ -4,7 +4,7 @@ PAKET SERAH TERIMA: demo.example.net (demo.example.net)
 Klien:   CV Demo
 Vendor:  Belum diisi
 Tanggal: Belum diisi
-Dibuat dengan dejavu 1.0.0 dari ansibro 1.2.0.
+Dibuat dengan dejavu 1.1.0 dari ansibro 1.2.0.
 
 INI MASIH DRAF. Jangan ditandatangani atau diserahkan: masih ada jawaban
 yang belum diisi.

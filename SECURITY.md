@@ -32,6 +32,7 @@ A security problem in ansibro, KeePassXC, pandoc, Typst or d2 belongs to that pr
 - The passphrase is shown only in a real terminal, so it never reaches an AI agent or a log. It must travel to the client on another channel than the file.
 - The output folder is refused inside a git repository, so the credentials file is never committed.
 - `doctor --fix` installs mise, when it is missing, with mise's official installer from `https://mise.run` over HTTPS, without a checksum of its own. It runs only after the user agreed, and needs no admin rights.
+- `install.sh` checks the downloaded skill against the release's `SHA256SUMS`. From 1.1.0 each release also records how `dejavu-skill.tar.gz` and `install.sh` were built (GitHub build provenance): `gh attestation verify dejavu-skill.tar.gz --repo sgnd/dejavu` checks that a file came from this repository's release workflow.
 
 ## Supported versions
 

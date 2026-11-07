@@ -20,7 +20,7 @@ cover:
     - {label: "Version", value: "1.0"}
     - {label: "Date", value: "Wednesday, 4 November 2026"}
     - {label: "Classification", value: "CONFIDENTIAL"}
-  footer: "Made with dejavu 1.0.0 from ansibro 1.2.0. This guide contains no passwords; they are only in the encrypted credentials file."
+  footer: "Made with dejavu 1.1.0 from ansibro 1.2.0. This guide contains no passwords; they are only in the encrypted credentials file."
 ---
 
 # Access from your laptop (Linux) {#guide}
