@@ -1,26 +1,22 @@
 # dejavu: the answers that ansibro cannot know. The agent fills this in with you.
-# dejavu: jawaban yang tidak diketahui ansibro. Agent mengisinya bersama Anda.
 #
-# Never write a password here. / Jangan pernah menulis kata sandi di sini.
+# Never write a password here.
 # Unknown answers stay empty (null): the documents then say "not provided", never a guess.
-# Jawaban yang belum diketahui biarkan kosong (null): dokumen menulis "belum diisi", bukan tebakan.
 
 # Language of the documents: id, en, or [id, en] (two full sets; the Indonesian one prevails).
-# Bahasa dokumen: id, en, atau [id, en] (dua set lengkap; versi Bahasa Indonesia yang berlaku).
 lang: id
 
 # Short name of the system for the documents, e.g. Production, Staging.
-# Nama singkat sistem untuk dokumen, misalnya Produksi, Staging.
 environment: null
 
-# Short name used in file names (default: the client's short name). / Nama pendek di nama file.
+# Short name used in file names (default: the client's short name).
 slug: null
 
 document:
   number: null          # e.g. 001/DOK/VENDOR/XI/2026
-  version: "1.0"        # raise it for every re-issue / naikkan setiap terbit ulang
+  version: "1.0"        # raise it for every re-issue
   classification: null  # default: TERBATAS (id) / CONFIDENTIAL (en)
-  prepared_by: null     # name / nama
+  prepared_by: null     # name
   reviewed_by: null
   approved_by: null
   revisions: []         # [{version: "1.0", date: 2026-11-04, by: Name, change: First issue}]
@@ -31,28 +27,28 @@ bast:
   place: null           # e.g. Jakarta
   title: null           # default: BERITA ACARA SERAH TERIMA PEKERJAAN / HANDOVER AND ACCEPTANCE CERTIFICATE
   stage: single         # single, pho (provisional: work done, warranty starts), fho (final)
-  fho_date: null        # with pho: the planned final handover / rencana serah terima akhir
-  contract:             # the basis: contract, SPK or PO / dasar: kontrak, SPK, atau PO
+  fho_date: null        # with pho: the planned final handover
+  contract:             # the basis: contract, SPK or PO
     name: null
     number: null
     date: null
   first_party: vendor   # who is PIHAK PERTAMA: vendor (the one handing over) or client
   meterai:
-    enabled: false      # a Rp10.000 stamp box / kotak meterai Rp10.000
+    enabled: false      # a Rp10.000 stamp (meterai) box
     side: client        # client or vendor
-  copies: 2             # printed copies with equal legal force / rangkap
-  mengetahui: []        # [{name: , title: , company: }] (acknowledged by / mengetahui)
+  copies: 2             # printed copies with equal legal force
+  mengetahui: []        # [{name: , title: , company: }] (people who acknowledge it)
   witnesses: []         # [{name: , title: , company: }]
 
 client:
   name: null            # PT Contoh Klien
   short: null           # Contoh (used in file names)
   address: null
-  logo: null            # path to a PNG or SVG / path ke file PNG atau SVG
+  logo: null            # path to a PNG or SVG
   signer: {name: null, title: null}
 
 vendor:
-  name: null            # the company that built the system / perusahaan yang membangun sistem
+  name: null            # the company that built the system
   short: null
   address: null
   logo: null
@@ -62,22 +58,19 @@ vendor:
   signer: {name: null, title: null}
 
 # Per server: the public IP when the `host` in config.yml is private, and where it runs.
-# Per server: IP publik bila `host` di config.yml adalah IP privat, dan di mana server berjalan.
 servers:
   # SERVERS
 
-provider: null          # e.g. DigitalOcean, AWS, on-premises / di gedung sendiri
+provider: null          # e.g. DigitalOcean, AWS, on-premises
 
 dns:
   mode: public          # public (normal DNS), internal (company DNS), hosts (no DNS: a hosts file)
   provider: null        # e.g. Cloudflare
-  owner: null           # who controls the domain / siapa pemegang domain
-  proxied: false        # a CDN in front (Cloudflare orange cloud) / ada CDN di depan
+  owner: null           # who controls the domain
+  proxied: false        # a CDN in front (Cloudflare orange cloud)
 
 # The client's staff who need access. persona: viewer (web pages), operator (also SSH),
 # successor (will run ansibro). os: windows, macos, linux. allow_from: their public IP or office range.
-# Staf klien yang butuh akses. persona: viewer (halaman web), operator (juga SSH), successor (akan
-# menjalankan ansibro). os: windows, macos, linux. allow_from: IP publik atau rentang IP kantor mereka.
 people: []              # [{name: Budi, persona: operator, os: windows, allow_from: [198.51.100.7]}]
 
 # client_key: the client sends their own SSH public key (safest).
@@ -92,9 +85,9 @@ password_change_days: 7   # the client changes every password within this many d
 vendor_access_end: null   # the date the vendor's SSH key and IPs are removed
 
 delivery:
-  kdbx_channel: null       # how the credentials file travels, e.g. USB in person / USB langsung
-  passphrase_channel: null # a DIFFERENT channel, e.g. phone call / telepon
-  recipient: null          # who receives the passphrase / penerima kata sandi pembuka
+  kdbx_channel: null       # how the credentials file travels, e.g. USB in person
+  passphrase_channel: null # a DIFFERENT channel, e.g. phone call
+  recipient: null          # who receives the passphrase
 
 support:
   contacts: []           # [{name: , role: , phone: , email: }]
@@ -103,7 +96,7 @@ support:
   warranty:
     months: null         # e.g. 3
     until: null          # 2027-02-04
-    scope: null          # what the warranty covers / cakupan garansi
+    scope: null          # what the warranty covers
 
 restore_drill: null      # the date a restore was last tested, or null (never)
 
@@ -113,10 +106,9 @@ tls:
 font: null               # {name: Inter, dir: /path/to/fonts} for another font in the PDFs
 
 # Free text, in the language of the documents. Plain words, no passwords.
-# Teks bebas, dalam bahasa dokumen. Kata-kata sederhana, tanpa kata sandi.
 summary_note: null
-known_issues: []         # accepted warnings and open items / temuan yang diterima dan sisa pekerjaan
-out_of_scope: []         # what was not part of the work / yang bukan bagian pekerjaan
+known_issues: []         # accepted warnings and open items
+out_of_scope: []         # what was not part of the work
 extra_apps: []           # the client's own apps: [{name: , about: , url: }]
 notes: []                # extra notes for the BAST
 attach: []               # extra files for the credentials file (paths), e.g. a VPN profile

@@ -7,8 +7,6 @@ Hand a server system over to your client, with every document they need, in one 
 
 You built a system for a client with [ansibro](https://github.com/sgnd/ansibro). Now you hand it over. Ask your [AI agent](#words-used-here):
 
-> Buatkan dokumen serah terima untuk sistem ansibro ini.
->
 > Make the handover documents for this ansibro system.
 
 and you get:
