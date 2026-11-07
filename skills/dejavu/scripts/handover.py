@@ -208,7 +208,7 @@ class Ansibro:
                 "swarm_app_constraint", "registry_addr"]
 
     def handover_json(self):
-        """state/handover.json (ansibro after 1.3.0): the facts of the last install, no passwords.
+        """state/handover.json (ansibro newer than 1.2): the facts of the last install, no passwords.
         None when this ansibro does not write it."""
         mode = self.state_mode()
         try:
@@ -506,6 +506,7 @@ def matches(cond, f):
         "victoria": "victoria" in apps,
         "backup": f["backup"]["enabled"],
         "k3s": f["orchestrator"] == "k3s",
+        "swarm": f["orchestrator"] == "swarm",
         "wireguard": f["wireguard"],
     }[cond]
 
@@ -824,7 +825,11 @@ def read_alerts(ab, apps_cfg, gv, f):
             sev = (rule.get("labels") or {}).get("severity", "")
             if sev == "none":
                 continue
-            summary = re.sub(r"\{\{\s*\$labels\.(\w+)\s*\}\}", r"<\1>", (rule.get("annotations") or {}).get("summary", ""))
+            summary = (rule.get("annotations") or {}).get("summary", "")
+            if "redis_instance_info" in str(rule.get("expr", "")) and gv.get("cache_app"):
+                # A cache rule: its job label is the cache app (redis or valkey) of this system.
+                summary = re.sub(r"\{\{\s*\$labels\.job\s*\}\}", gv["cache_app"], summary)
+            summary = re.sub(r"\{\{\s*\$labels\.(\w+)\s*\}\}", r"<\1>", summary)
             summary = re.sub(r"\{\{[^}]*\}\}", "…", summary)
             out.append({"group": group["name"], "name": rule["alert"], "severity": sev,
                         "for": rule.get("for", ""), "summary": summary.strip()})

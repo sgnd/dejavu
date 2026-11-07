@@ -35,9 +35,10 @@ It uses tools that already exist: [pandoc](https://pandoc.org) and [Typst](https
 ## Requirements
 
 - The computer that installed the system with ansibro (macOS or Linux), and the ansibro folder on it. That folder holds the passwords, in `state/`.
-- ansibro 1.2 or newer.
+- ansibro 1.2 or 1.3. It is tested with the 1.2 release and with ansibro main (the coming 1.3); with a newer ansibro dejavu warns `ansibro-untested-version`, and the documents are still made.
 - An AI agent: Claude Code, Codex, Gemini CLI or another one that reads skills.
 - [KeePassXC](https://keepassxc.org/download/) and [mise](https://mise.jdx.dev). When they are missing, the agent asks, then installs what needs no admin rights: mise in your home folder (it downloads pandoc, Typst and d2), and on a Mac with Homebrew also KeePassXC. On Linux, it gives you the command for KeePassXC (it needs your password).
+- With encrypted state (`state.age`), also [age](https://github.com/FiloSottile/age). On a Mac with Homebrew the agent installs it too.
 
 ## Install
 
@@ -80,7 +81,7 @@ When something stops, every message has an id, and [the troubleshooting guide](s
 - No password, key or token is ever in a document, a diagram or `handover.yml`. Every build searches all of them, and stops and deletes its files when it finds one.
 - Passwords go only into the locked file. They never appear on screen or in the agent's conversation.
 - The output folder must be outside any git repository, so the locked file is never committed by mistake.
-- When ansibro keeps its passwords encrypted (`state.age`), dejavu reads them without writing them to disk, and keeps the passphrase there too.
+- When ansibro keeps its passwords encrypted (`state.age`), dejavu reads them into memory, and keeps the passphrase there too. Only `check` opens `state/` on disk while ansibro's test runs, and closes it again.
 
 See [SECURITY.md](SECURITY.md) to report a problem.
 

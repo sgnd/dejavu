@@ -54,6 +54,36 @@ class Text(unittest.TestCase):
             self.assertEqual(yaml.safe_load(f"k: {q(text)}")["k"], "" if text is None else text)
 
 
+class Ansibro13(unittest.TestCase):
+    """What changed in ansibro 1.3 (main) that dejavu must know."""
+
+    def test_cache_alert_names_the_cache_app(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "roles", "observability", "files"))
+            with open(os.path.join(d, "roles", "observability", "files", "alerts.yml"), "w") as f:
+                f.write("groups:\n- name: databases\n  rules:\n  - alert: CacheNoPrimary\n"
+                        "    expr: count by (job) (redis_instance_info) > 1\n    labels: {severity: critical}\n"
+                        "    annotations:\n      summary: >-\n        No {{ $labels.job }} server is the primary."
+                        " Check: sudo docker exec {{ $labels.job }}-sentinel {{ $labels.job }}-cli\n"
+                        "  - alert: DiskFull\n    expr: x\n    labels: {severity: warning}\n"
+                        "    annotations: {summary: \"{{ $labels.instance }} is full\"}\n")
+            ab = h.Ansibro(d, "config.yml")
+            f = {"orchestrator": "swarm", "backup": {"enabled": False}, "wireguard": False}
+            gv = {"monitoring_app": "victoria", "cache_app": "valkey"}
+            alerts = {a["name"]: a["summary"] for a in h.read_alerts(ab, {"valkey": "swarm"}, gv, f)}
+        self.assertEqual(alerts["CacheNoPrimary"],
+                         "No valkey server is the primary. Check: sudo docker exec valkey-sentinel valkey-cli")
+        self.assertEqual(alerts["DiskFull"], "<instance> is full")  # other labels stay placeholders
+
+    def test_kong_admin_key_is_optional_and_swarm_note(self):
+        data = h.load_yaml(os.path.join(h.ASSETS, "apps.yml"))
+        self.assertEqual(data["secrets"]["kong_admin_key"]["when"], "optional")  # ansibro 1.2 has none
+        f = {"app_names": [], "gv": {}, "admin_sso": "", "backup": {"enabled": False}, "wireguard": False}
+        self.assertTrue(h.matches("swarm", {**f, "orchestrator": "swarm"}))
+        self.assertFalse(h.matches("swarm", {**f, "orchestrator": "k3s"}))
+        self.assertIn("swarm", [n.get("when") for n in data["apps"]["kong"]["notes"]])
+
+
 class Facts(unittest.TestCase):
     def test_repository_keeps_no_password(self):
         r = h.redact_repository("rest:https://user:s3cretpass@backup.example.com:8000/apps")

@@ -19,7 +19,7 @@ A change fits when all of these are true:
 
 ```text
 handover.py build
-  facts      ansibro's inventory.py --list, state/handover.json (ansibro after 1.3.0; else one ansible
+  facts      ansibro's inventory.py --list, state/handover.json (ansibro newer than 1.2; else one ansible
              debug call for the group_vars rules, no SSH),
              alerts.yml, CHANGELOG.md, state/secrets names  +  assets/apps.yml   -> facts.json
   render     assets/<lang>/*.md.j2 with facts.json + handover.yml (the answers)  -> dist/<lang>/*.md
@@ -42,7 +42,7 @@ handover.py build
 
 - A fact ansibro has is read from ansibro, never written in dejavu. When ansibro has it only in prose, it goes into `apps.yml`, and `tests/drift.py` checks it against ansibro.
 - Templates get the facts and the answers, never a secret value. Text typed by the user goes through the `md` filter; front-matter values through `q`.
-- Change `id` and `en` in the same pull request. The tests compare their structure.
+- Change `id` and `en` in the same pull request, with the same headings, anchors and tables. The golden files show both; no test compares them.
 
 ## Check your change
 

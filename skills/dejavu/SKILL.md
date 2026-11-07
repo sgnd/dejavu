@@ -2,10 +2,10 @@
 name: dejavu
 description: Make the complete handover pack for a server system built with ansibro - the BAST (Berita Acara Serah Terima / Handover and Acceptance Certificate), the technical documentation, a laptop access guide per OS (Windows, macOS, Linux), and one encrypted KeePassXC file with every password - in Indonesian, English or both, as Markdown and PDF. Use it when the user asks for a BAST, berita acara, serah terima, handover documents, dokumentasi teknis, client documentation, or "how does the client access the system" for an ansibro cluster.
 license: MIT
-compatibility: macOS or Linux, inside an ansibro (1.2 or newer) folder where ./install.sh ran. Needs ansibro's .venv, mise (for pandoc, Typst and d2) and keepassxc-cli.
+compatibility: macOS or Linux, inside an ansibro (1.2 or newer) folder where ./install.sh ran. Needs ansibro's .venv, mise (for pandoc, Typst and d2), keepassxc-cli, and age when the state is encrypted (state.age).
 metadata:
   version: "1.0.0"
-  ansibro: ">=1.2.0 <2"
+  ansibro: ">=1.2.0 <1.4"
 ---
 
 # dejavu: the handover pack for an ansibro system
@@ -35,15 +35,17 @@ Many users are not technical. Use plain words, ask a few questions at a time, an
 Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and `state/` or `state.age`), with ansibro's own Python. `SKILL` is the folder of this file (for example `~/.claude/skills/dejavu`):
 
 ```bash
-.venv/bin/python "$SKILL/scripts/handover.py" COMMAND [--config FILE] [--out DIR]
+.venv/bin/python "$SKILL/scripts/handover.py" COMMAND [--config FILE] [--out DIR] [--ansibro DIR]
 ```
 
 - `--config`: the config that was installed (default `config.yml`). Ask when there are several.
 - `--out`: the output folder (default `~/Handover/<domain>-<config>`). It must be outside every git repository.
+- `--ansibro`: the ansibro folder, when you are not in it (default: the current folder).
+- `--force` (with `build`): overwrite documents that were edited by hand.
 
 | Command | What it does |
 | --- | --- |
-| `doctor` | Checks the folder, Python, the state, mise and keepassxc-cli. Run it first. `--fix` installs what needs no admin rights: mise (in `~/.local/bin`) and the PDF tools; KeePassXC and age with Homebrew on macOS. |
+| `doctor` | Checks the folder, Python, the state, the PDF tools (pandoc, Typst and d2, from PATH or through mise), keepassxc-cli, and age when state.age is used. Run it first. `--fix` installs what needs no admin rights: mise (in `~/.local/bin`) and the PDF tools; KeePassXC and age with Homebrew on macOS. |
 | `init` | Makes the output folder and `handover.yml` (the answers), and lists what is still empty. |
 | `facts` | Reads the facts from ansibro (no network, no SSH) and prints warnings. |
 | `check` | Runs ansibro's own acceptance test on the servers. Read-only, but it connects: ask first. |
@@ -51,7 +53,7 @@ Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and
 | `scan` | Searches the output for secret values (`build` does this too). |
 | `passphrase` | Shows the credentials file's passphrase, only in a real terminal: the user runs it, not you. |
 
-Every line starts with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:`. Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed (a bug: report it), 5 a secret reached a document (the files of that run are deleted). Every id is explained in [references/troubleshooting.md](references/troubleshooting.md).
+Status lines start with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:` (lists, like the answers that are still empty, follow on indented lines). Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed (a bug: report it), 5 a secret reached a document (the files of that run are deleted), 130 stopped with Ctrl-C (state/ is closed again). Every id is explained in [references/troubleshooting.md](references/troubleshooting.md).
 
 ## The steps
 
@@ -71,7 +73,7 @@ Every line starts with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed
 
 ## Good to know
 
-- Re-running `build` is safe. It keeps the same passphrase and the same credentials file unless the passwords changed (`--rebuild-vault` and `--new-passphrase` force it).
+- Re-running `build` is safe. It keeps the same passphrase and the same credentials file unless a password, the list of passwords, the first language, `ssh_handover` or an attached file changed (`--rebuild-vault` and `--new-passphrase` force it).
 - Both languages give two full sets and one shared credentials file. The Indonesian BAST says the Indonesian version prevails.
 - When ansibro is newer than this skill was tested with, `facts` warns `ansibro-untested-version`: the documents are still made, but check them carefully.
 - The meterai, PIHAK PERTAMA/KEDUA and the legal wording follow common Indonesian practice; they are not legal advice. When in doubt, the user asks their legal team.

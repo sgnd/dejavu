@@ -16,7 +16,7 @@ permissions:
 
 env:
   GITHUB_TOKEN: ${{ github.token }} # mise downloads pandoc, Typst and d2 from GitHub
-  ANSIBRO_REF: v1.2.0 # the ansibro release dejavu is tested against (SKILL.md metadata.ansibro)
+  ANSIBRO_REF: v1.2.0 # the ansibro release dejavu is tested against (the newest release in the range of SKILL.md metadata.ansibro)
 
 jobs:
   # 1. The scripts have no common bugs, the skill file is valid, and the quick tests pass.
@@ -64,7 +64,24 @@ jobs:
         if: matrix.image == 'debian:13-slim' && matrix.runner == 'ubuntu-latest'
         with: { name: samples, path: samples/ }
 
-  # 3. macOS: the operator's machine is often a Mac.
+  # 3. ansibro main (the coming release): every check except the golden files, which are made
+  #    with ANSIBRO_REF. A change in ansibro that dejavu misses (a new secret, app or image: see
+  #    tests/drift.py) fails here before ansibro releases it. Runs every Monday too.
+  ansibro-main:
+    name: ansibro main (debian:13-slim)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with: { repository: sgnd/ansibro, ref: main, path: ansibro }
+      - name: Which ansibro main
+        run: git -C ansibro log -1 --format='%h %s'
+      - run: >-
+          docker run --rm -e GITHUB_TOKEN -e NO_GOLDEN=1 -v "$PWD:/src:ro" -v "$PWD/ansibro:/ansibro:ro"
+          debian:13-slim sh /src/tests/test.sh --install
+
+  # 4. macOS: the operator's machine is often a Mac.
   macos:
     name: macOS
     runs-on: macos-latest # Apple Silicon

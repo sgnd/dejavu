@@ -4,7 +4,7 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 
 ## Unreleased
 
-- With an ansibro newer than 1.3.0, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
+- With an ansibro newer than 1.2, dejavu reads ansibro's own settings (Traefik servers, admin login, database, cache, monitoring) from `state/handover.json`, also inside `state.age`. Older ansibro works as before, through one ansible call.
 - When `state/handover.json` no longer matches `config.yml` (other servers or apps), `facts` warns `handover-json-outdated`: the config changed after the last install.
 - A clear message when ansible is needed but not installed (also in `check`).
 - `state/handover.json` is also checked against the servers' addresses, roles, the app placement, the domain and TLS; a file in an unknown form falls back to ansible instead of stopping.
@@ -15,6 +15,8 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 - `scan` and `passphrase` work without `facts.json`.
 - `doctor --fix` installs the missing tools where no admin rights are needed: mise into `~/.local/bin`, and pandoc, Typst and d2 through mise (downloaded ahead, so the first build needs no network). On macOS with Homebrew it also installs KeePassXC, and age when `state.age` is used. Anything that needs `sudo` stays with the user. Running it again changes nothing.
 - dejavu shares one Mac with brework, ansibro and komando: it uses a mise that is already there (also Homebrew's in `/opt/homebrew/bin` or `/usr/local/bin` when it is not on PATH) instead of installing a second one, never reinstalls a KeePassXC.app that is there, finds Homebrew's brew and age off PATH, and only runs `mise exec` / `mise install tool@version`: it never edits `~/.zshrc`, `~/.bashrc` or mise's global config.
+- Ready for ansibro 1.3: the Kong admin key (`state/secrets/kong_admin_key`, Swarm) is in the credentials file and the documents, the technical documentation says how Kong's admin API is guarded, and the cache alert names the cache app (Redis or Valkey). `metadata.ansibro` covers 1.2 and 1.3 (`>=1.2.0 <1.4`).
+- CI also tests against ansibro main (every check except the golden files, also every Monday), so a change in ansibro that dejavu misses shows up before ansibro releases it.
 - A wrong age key for `state.age` now stops with `failed [age]` and age's own message, instead of a Python traceback.
 - A `handover.yml` that is not valid YAML, or a `people:` entry that is not `name:/os:/persona:`, now stops with `failed [answers]` (exit 2) instead of a traceback.
 - `check` warns `server-facts` when ansible could not read the servers' details, and counts only the servers it reached. A garbled answer from one server no longer stops it.
