@@ -23,8 +23,10 @@ memory only to build the credentials file and to search the output for leaks.
 
 import argparse
 import base64
+import contextlib
 import datetime
 import hashlib
+import hmac
 import io
 import ipaddress
 import json
@@ -50,6 +52,7 @@ KEEPASSXC_MIN = (2, 7, 6)
 LANGS = ("id", "en")
 OSES = ("windows", "macos", "linux")
 MIN_SECRET = 6  # shorter values cannot be searched for safely
+WARNED_WEAK = set()  # weak-secret is said once per run, not once per leak check
 TEST = os.environ.get("DEJAVU_TEST") == "1"
 
 
@@ -239,14 +242,9 @@ class Ansibro:
         temporary folder, so even a mistaken password lookup cannot write into state/."""
         names = self.GV_NAMES
         expr = "{{ {" + ", ".join(f'"{n}": {n}' for n in names) + "} }}"
+        ansible = self.ansible("this ansibro has no state/handover.json (or an outdated one)")
         before = self.state_listing()
         with tempfile.TemporaryDirectory() as tmp:
-            ansible = os.path.join(self.venv_bin, "ansible")
-            if not os.path.exists(ansible):
-                ansible = shutil.which("ansible") or ansible
-            if not os.path.exists(ansible):
-                failed("ansible", "this ansibro has no state/handover.json (or an outdated one), and ansible is not "
-                       "installed here. Run dejavu with ansibro's .venv/bin/python, or run ./install.sh again.")
             r = run([ansible, "managers[0]", "-m", "ansible.builtin.debug", "-e", f"secrets_dir={tmp}",
                      "-a", f"msg={expr}"], cwd=self.dir, env=self.env())
             wrote = os.listdir(tmp)
@@ -257,6 +255,16 @@ class Ansibro:
         if r.returncode != 0 or "=>" not in out:
             failed("ansible", "ansible could not read ansibro's settings: " + (r.stderr or out).strip()[-400:])
         return json.loads(out[out.index("=>") + 2:])["msg"]
+
+    def ansible(self, why):
+        """The ansible command: next to this Python (ansibro's .venv), else on PATH."""
+        ansible = os.path.join(self.venv_bin, "ansible")
+        if not os.path.exists(ansible):
+            ansible = shutil.which("ansible") or ansible
+        if not os.path.exists(ansible):
+            failed("ansible", f"{why}, and ansible is not installed here. "
+                   "Run dejavu with ansibro's .venv/bin/python, or run ./install.sh again.")
+        return ansible
 
     def state_listing(self):
         """Names and change times under state/, to prove that reading changed nothing."""
@@ -282,20 +290,25 @@ class Ansibro:
         return "plain" if plain else "none"
 
     def _age_members(self, want):
-        """Read files from state.age straight into memory: nothing is written to disk."""
-        if not shutil.which("age"):
-            needs_user("age", "state.age is encrypted with age, but age is not installed. "
-                       "macOS: brew install age. Linux: sudo apt-get install age")
-        p = subprocess.Popen(["age", "-d", "-i", self.key, self.state_age], stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        data = {}
-        with tarfile.open(fileobj=p.stdout, mode="r|") as tar:
-            for m in tar:
-                if m.isfile() and want(m.name):
-                    data[m.name] = tar.extractfile(m).read()
-        if p.wait() != 0:
-            failed("age", "age could not open state.age: " + p.stderr.read().decode(errors="replace").strip())
-        return data
+        """Read files from state.age straight into memory: nothing is written to disk.
+        Decrypted once per run, and again only when state.age changed."""
+        st = os.stat(self.state_age)
+        stamp = (st.st_mtime_ns, st.st_size)
+        if getattr(self, "_age_cache", (None, None))[0] != stamp:
+            if not shutil.which("age"):
+                needs_user("age", "state.age is encrypted with age, but age is not installed. "
+                           "macOS: brew install age. Linux: sudo apt-get install age")
+            p = subprocess.Popen(["age", "-d", "-i", self.key, self.state_age], stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            data = {}
+            with tarfile.open(fileobj=p.stdout, mode="r|") as tar:
+                for m in tar:
+                    if m.isfile():
+                        data[m.name] = tar.extractfile(m).read()
+            if p.wait() != 0:
+                failed("age", "age could not open state.age: " + p.stderr.read().decode(errors="replace").strip())
+            self._age_cache = (stamp, data)
+        return {n: v for n, v in self._age_cache[1].items() if want(n)}
 
     def secret_names(self):
         mode = self.state_mode()
@@ -328,63 +341,71 @@ class Ansibro:
                 return datetime.date.fromtimestamp(os.stat(p).st_mtime).isoformat()
         return None
 
-    # --- the passphrase of the credentials file: kept in state/handover/, encrypted with state ---
-
-    def passphrase_path(self, slug):
-        return os.path.join(self.state, "handover", f"{slug}.passphrase")
-
-    def read_passphrase(self, slug):
-        mode = self.state_mode()
-        if mode == "plain":
-            p = self.passphrase_path(slug)
-            if os.path.isfile(p):
-                with open(p, encoding="utf-8") as f:
-                    return f.read().strip()
-        elif mode == "age":
-            name = f"state/handover/{slug}.passphrase"
-            got = self._age_members(lambda n: n == name)
-            if name in got:
-                return got[name].decode().strip()
-        return None
-
-    def write_passphrase(self, slug, phrase):
-        mode = self.state_mode()
-        if mode == "none":
-            needs_user("no-state", "there is no state/ here, so there are no passwords to hand over. "
-                       "Run dejavu in the folder that ran ./install.sh.")
-
-        def write():
-            d = os.path.dirname(self.passphrase_path(slug))
-            os.makedirs(d, mode=0o700, exist_ok=True)
-            os.chmod(d, 0o700)
-            fd = os.open(self.passphrase_path(slug), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(phrase + "\n")
-
-        if mode == "plain":
-            write()
-            return
-        # Encrypted state: open it with ansibro's own script, write, and always close it again.
+    @contextlib.contextmanager
+    def opened_state(self):
+        """Open state.age with ansibro's own script, and always close it again, exactly once
+        (also on Ctrl-C), failing loudly when closing does not work."""
         script = os.path.join(self.dir, "scripts", "state.sh")
         r = run([script, "open"], cwd=self.dir)
         if r.returncode != 0:
             failed("state-open", r.stderr.strip() or "scripts/state.sh open failed")
         old = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
 
-        def close(*_):
-            run([script, "close"], cwd=self.dir)
-            raise Stop(130)
+        def interrupted(*_):
+            raise Stop(130)  # the finally below closes state/
 
         for s in old:
-            signal.signal(s, close)
+            signal.signal(s, interrupted)
         try:
-            write()
+            yield
         finally:
             for s, h in old.items():
                 signal.signal(s, h)
             r = run([script, "close"], cwd=self.dir)
             if r.returncode != 0:
                 failed("state-close", "could not encrypt state/ again. Run scripts/state.sh close now. " + r.stderr.strip())
+
+    # --- dejavu's own files (passphrase, generated SSH key): kept in state/handover/, encrypted with state ---
+
+    def read_handover_file(self, name):
+        mode = self.state_mode()
+        if mode == "plain":
+            p = os.path.join(self.state, "handover", name)
+            if os.path.isfile(p):
+                with open(p, encoding="utf-8") as f:
+                    return f.read().strip()
+        elif mode == "age":
+            member = f"state/handover/{name}"
+            got = self._age_members(lambda n: n == member)
+            if member in got:
+                return got[member].decode().strip()
+        return None
+
+    def write_handover_file(self, name, text):
+        mode = self.state_mode()
+        if mode == "none":
+            needs_user("no-state", "there is no state/ here, so there are no passwords to hand over. "
+                       "Run dejavu in the folder that ran ./install.sh.")
+
+        def write():
+            d = os.path.join(self.state, "handover")
+            os.makedirs(d, mode=0o700, exist_ok=True)
+            os.chmod(d, 0o700)
+            fd = os.open(os.path.join(d, name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+
+        if mode == "plain":
+            write()
+            return
+        with self.opened_state():
+            write()
+
+    def read_passphrase(self, slug):
+        return self.read_handover_file(f"{slug}.passphrase")
+
+    def write_passphrase(self, slug, phrase):
+        self.write_handover_file(f"{slug}.passphrase", phrase)
 
 
 def handover_json_mismatch(hj, inv):
@@ -395,10 +416,30 @@ def handover_json_mismatch(hj, inv):
     missing = [n for n in Ansibro.GV_NAMES + ["nodes", "apps"] if n not in hj]
     if missing:
         return "missing " + ", ".join(missing)
-    if sorted(n.get("name") for n in hj["nodes"]) != sorted(inv["_meta"]["hostvars"]):
+    nodes, apps = hj["nodes"], hj["apps"]
+    if not isinstance(nodes, list) or not all(isinstance(n, dict) and isinstance(n.get("name"), str) for n in nodes) \
+            or not isinstance(apps, dict):
+        return "nodes or apps in an unknown form"
+    cfg, hosts = inv["all"]["vars"], inv["_meta"]["hostvars"]
+    if sorted(n["name"] for n in nodes) != sorted(hosts):
         return "other servers than config"
-    if sorted(hj["apps"]) != sorted(inv["all"]["vars"]["apps"]):
+    if sorted(apps) != sorted(cfg["apps"]):
         return "other apps than config"
+    # The same names, but other settings: compared where handover.json has them.
+    for key in ("domain", "orchestrator", "tls"):
+        if key in hj and hj[key] != cfg.get(key):
+            return f"other {key} than config"
+    for n in nodes:
+        h = hosts[n["name"]]
+        have = {"ip": h.get("node_ip"), "host": h.get("node_host"), "role": h.get("node_role"),
+                "tier": (h.get("node_labels") or {}).get("tier", ""), "apps": h.get("node_apps", [])}
+        for key, value in have.items():
+            if key in n and n[key] != value:
+                return f"server {n['name']}: other {key} than config"
+    for app, entry in apps.items():
+        if isinstance(entry, dict) and "nodes" in entry and \
+                list(entry["nodes"] or []) != list((cfg.get("app_nodes") or {}).get(app) or []):
+            return f"{app}: other servers than config"
     return None
 
 
@@ -1127,7 +1168,8 @@ def needles(ab, slug):
             line = line.strip()
             if len(line) >= MIN_SECRET:
                 out[f"{name}" if i == 0 else f"{name} (line {i + 1})"] = line
-            elif line and name.startswith(("backup.", "monitoring.")):
+            elif line and name.startswith(("backup.", "monitoring.")) and name not in WARNED_WEAK:
+                WARNED_WEAK.add(name)
                 warning("weak-secret", f"{name} is shorter than {MIN_SECRET} characters, so the leak check cannot "
                         "search for it. Use a longer one.")
     if values.get("garage_access_key"):
@@ -1470,26 +1512,19 @@ def cmd_check(ab, args, data):
     out = prepare_out(args.out or default_out(ab), create=True)
     chk = os.path.join(out, "check")
     os.makedirs(chk, mode=0o700, exist_ok=True)
-    mode = ab.state_mode()
-    script = os.path.join(ab.dir, "scripts", "state.sh")
-    opened = False
-    if mode == "age":
-        r = run([script, "open"], cwd=ab.dir)
-        if r.returncode != 0:
-            failed("state-open", r.stderr.strip())
-        opened = True
-    try:
+    with ab.opened_state() if ab.state_mode() == "age" else contextlib.nullcontext():
         r = run([sys.executable, os.path.join(ab.dir, "tests", "check.py"), ab.config], cwd=ab.dir, env=ab.env())
         lines = [x for x in (r.stdout + r.stderr).splitlines() if re.match(r"^(PASS|FAIL|SKIP)\b", x.strip())]
+        if r.returncode != 0 and not any(x.strip().startswith("FAIL") for x in lines):
+            # check.py stopped without saying which test failed (a crash): never a pass.
+            lines.append(f"FAIL tests/check.py stopped with exit code {r.returncode}"
+                         + ("" if lines else " before any test ran"))
         with open(os.path.join(chk, "acceptance.txt"), "w", encoding="utf-8") as f:
             f.write(f"date: {datetime.datetime.now().isoformat(timespec='minutes')}\n")
             f.write("\n".join(lines) + "\n")
         servers = server_facts(ab)
         write_json(os.path.join(chk, "servers.json"), servers)
         ok(f"server details read from {len(servers)} servers")
-    finally:
-        if opened:
-            run([script, "close"], cwd=ab.dir)
     facts, _ca = build_facts(ab, args, data)
     write_json(os.path.join(chk, "web.json"), web_facts(facts, load_answers(out) if os.path.isfile(
         os.path.join(out, "handover.yml")) else {}))
@@ -1504,7 +1539,7 @@ def cmd_check(ab, args, data):
 def server_facts(ab):
     """vCPU, memory, disk, OS and the SSH host key fingerprint of every server (ansible setup)."""
     with tempfile.TemporaryDirectory() as tmp:
-        r = run([os.path.join(ab.venv_bin, "ansible"), "all", "-m", "ansible.builtin.setup", "-a",
+        r = run([ab.ansible("check reads the server details with ansible"), "all", "-m", "ansible.builtin.setup", "-a",
                  "gather_subset=!all,hardware,distribution", "-e", f"secrets_dir={tmp}"], cwd=ab.dir, env=ab.env())
     servers = {}
     for block in re.split(r"\n(?=\S+ \| [A-Z]+!? => )", "\n" + r.stdout):
@@ -1689,6 +1724,13 @@ def cmd_build(ab, args, data):
         dst = os.path.join(dist, f"{slug}-ca.crt")
         shutil.copyfile(os.path.expanduser(src), dst)
         fresh.append(dst)
+    ssh_key = None
+    if a.get("ssh_handover") == "generated" and ab.state_mode() != "none":
+        ssh_key = ssh_key_pair(ab, slug)
+        pub = os.path.join(dist, f"{slug}_ed25519.pub")
+        with open(pub, "w", encoding="utf-8") as fh:
+            fh.write(ssh_key[1] + "\n")
+        fresh.append(pub)
 
     # 2. The documents, except the BAST (it lists the hashes of the others).
     docs = []
@@ -1728,8 +1770,15 @@ def cmd_build(ab, args, data):
         kname = f"{slug}-{'kredensial' if a['lang'][0] == 'id' else 'credentials'}.kdbx"
         kdbx = os.path.join(dist, kname)
         stamp = os.path.join(build, "vault.json")
+        # The values too (a changed password makes a new file), keyed with the passphrase so the
+        # stamp says nothing about them; and the contents of the attached files.
+        values = {**ab.secret_values(), **config_secret_values(ab)}
+        values_mac = hmac.new(phrase.encode(), json.dumps(sorted(values.items())).encode(), hashlib.sha256).hexdigest()
+        attached = [sha256(os.path.expanduser(x)) for x in a.get("attach") or []]
         want = hashlib.sha256(json.dumps([facts["secrets"], facts["config_secrets"], a["lang"][0],
-                                          a.get("ssh_handover"), a.get("attach")], sort_keys=True).encode()).hexdigest()
+                                          a.get("ssh_handover"), a.get("attach"), values_mac, attached,
+                                          ssh_key[1] if ssh_key else None],
+                                         sort_keys=True).encode()).hexdigest()
         current = load_json(stamp) if os.path.isfile(stamp) else {}
         if args.rebuild_vault or args.new_passphrase or not os.path.isfile(kdbx) or current.get("want") != want \
                 or current.get("sha256") != sha256(kdbx):
@@ -1737,8 +1786,8 @@ def cmd_build(ab, args, data):
             for extra in a.get("attach") or []:
                 with open(os.path.expanduser(extra), "rb") as fh:
                     attachments.append((os.path.basename(extra), "infra", os.path.basename(extra), fh.read()))
-            if a.get("ssh_handover") == "generated":
-                attachments.append(ssh_key_attachment(slug, a))
+            if ssh_key:
+                attachments.append(("SSH key (client)", "infra", f"{slug}_ed25519", (ssh_key[0] + "\n").encode()))
             build_vault(ab, cli, kdbx, phrase, facts, a, data, a["lang"][0], attachments)
             write_json(stamp, {"want": want, "sha256": sha256(kdbx)})
         else:
@@ -1775,7 +1824,7 @@ def cmd_build(ab, args, data):
         if os.path.basename(p) in ("SHA256SUMS",) or os.path.basename(rel).startswith(tuple(
                 f"{slug}-{FILES[x]['bast']}" for x in LANGS)):
             continue
-        if p.endswith((".pdf", ".kdbx", ".crt", ".txt")) and "README" not in p:
+        if p.endswith((".pdf", ".kdbx", ".crt", ".txt", ".pub")) and "README" not in p:
             files.append({"name": rel, "size": os.path.getsize(p), "sha256": sha256(p)})
     for lang in a["lang"]:
         env = jinja_env(lang)
@@ -1811,6 +1860,9 @@ def cmd_build(ab, args, data):
     if left:
         warning("open-warnings", f"still open: {', '.join(sorted(set(left)))}. Each one is in the known issues "
                 "appendix; check them with the user.")
+    if ssh_key:
+        say("needs the user", f"put dist/{slug}_ed25519.pub (the client's new SSH key) into ~/.ssh/authorized_keys "
+            f"of {facts['ssh']['user']} on every server before the handover, so the client can log in.", "ssh-key")
     if kdbx:
         say("needs the user", "give the credentials file and its passphrase on two different channels. "
             f"The user reads the passphrase in their own terminal: {sys.executable} {os.path.abspath(__file__)} "
@@ -1819,27 +1871,45 @@ def cmd_build(ab, args, data):
     raise Stop(0)
 
 
-def ssh_key_attachment(slug, a):
-    """A new SSH key for a client who cannot make one: the private key goes into the credentials
-    file, the public key next to the documents."""
+def ssh_key_pair(ab, slug):
+    """A new SSH key for a client who cannot make one: (private, public). Made once and kept in
+    state/handover/ like the passphrase, so every build hands over the same key. The private key
+    goes into the credentials file, the public key next to the documents."""
+    name = f"{slug}_ed25519"
+    private, public = ab.read_handover_file(name), ab.read_handover_file(name + ".pub")
+    if private and public:
+        return private, public
     with tempfile.TemporaryDirectory() as tmp:
-        key = os.path.join(tmp, f"{slug}_ed25519")
+        key = os.path.join(tmp, name)
         r = run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", f"{slug}-client", "-f", key])
         if r.returncode != 0:
             failed("ssh-keygen", r.stderr.strip())
-        with open(key, "rb") as fh:
-            private = fh.read()
-        with open(key + ".pub", "rb") as fh:
-            public = fh.read()
-    a.setdefault("_generated_pub", public.decode().strip())
-    return ("SSH key (client)", "infra", f"{slug}_ed25519", private)
+        with open(key, encoding="utf-8") as fh:
+            private = fh.read().strip()
+        with open(key + ".pub", encoding="utf-8") as fh:
+            public = fh.read().strip()
+    ab.write_handover_file(name, private)
+    ab.write_handover_file(name + ".pub", public)
+    ok(f"made the client's SSH key; it is kept in state/handover/ ({name})")
+    return private, public
+
+
+def saved_facts(ab, out):
+    """facts.json of the last run; without it, the domain from the config (what slug_of needs)."""
+    p = os.path.join(out, "facts.json")
+    if os.path.isfile(p):
+        return load_json(p)
+    try:
+        domain = load_yaml(ab.config).get("domain")
+    except OSError:
+        domain = None
+    return {"domain": domain or "x"}
 
 
 def cmd_scan(ab, args, data):
     out = prepare_out(args.out or default_out(ab), create=False)
     a = load_answers(out)
-    facts = load_json(os.path.join(out, "facts.json")) if os.path.isfile(os.path.join(out, "facts.json")) else {"domain": "x"}
-    leak_gate(ab, out, slug_of(a, facts))
+    leak_gate(ab, out, slug_of(a, saved_facts(ab, out)))
     ok("no secret value found in the output")
     raise Stop(0)
 
@@ -1850,8 +1920,7 @@ def cmd_passphrase(ab, args, data):
                "or a log. Ask the user to run this command in their own Terminal.")
     out = prepare_out(args.out or default_out(ab), create=False)
     a = load_answers(out)
-    facts = load_json(os.path.join(out, "facts.json"))
-    phrase = ab.read_passphrase(slug_of(a, facts))
+    phrase = ab.read_passphrase(slug_of(a, saved_facts(ab, out)))
     if not phrase:
         needs_user("no-passphrase", "there is no passphrase yet. Run build first.")
     print(phrase)

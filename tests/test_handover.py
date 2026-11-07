@@ -80,6 +80,20 @@ class Facts(unittest.TestCase):
         broken = dict(hj)
         del broken["admin_sso"]
         self.assertEqual(h.handover_json_mismatch(broken, inv), "missing admin_sso")
+        # A wrong form is a reason, never a crash.
+        for bad in ({"nodes": None}, {"nodes": ["srv", "db"]}, {"nodes": [{"name": "db"}, {}]}, {"apps": [{"x": 1}]}):
+            self.assertEqual(h.handover_json_mismatch({**hj, **bad}, inv), "nodes or apps in an unknown form")
+        # The same names, other settings.
+        inv2 = {"_meta": {"hostvars": {"srv": {"node_ip": "10.0.0.1"}, "db": {"node_ip": "10.0.0.2"}}},
+                "all": {"vars": {"apps": {"postgres": "swarm"}, "app_nodes": {"postgres": ["db"]}, "tls": "acme"}}}
+        ok = {**hj, "tls": "acme", "nodes": [{"name": "db", "ip": "10.0.0.2"}, {"name": "srv", "ip": "10.0.0.1"}],
+              "apps": {"postgres": {"nodes": ["db"]}}}
+        self.assertIsNone(h.handover_json_mismatch(ok, inv2))
+        self.assertEqual(h.handover_json_mismatch({**ok, "tls": "selfsigned"}, inv2), "other tls than config")
+        self.assertEqual(h.handover_json_mismatch({**ok, "nodes": [{"name": "db", "ip": "10.0.0.9"}, {"name": "srv"}]},
+                                                  inv2), "server db: other ip than config")
+        self.assertEqual(h.handover_json_mismatch({**ok, "apps": {"postgres": {"nodes": ["db", "srv"]}}}, inv2),
+                         "postgres: other servers than config")
 
     def test_version_range(self):
         self.assertTrue(h.in_range("1.2.0", ">=1.2.0 <2"))
