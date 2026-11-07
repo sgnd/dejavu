@@ -14,11 +14,13 @@ Commands:
     scan        search the output for secret values (build does it too)
     passphrase  show the credentials file's passphrase (only in a real terminal)
 
-Every line starts with "ok:", "warning: [id]", "needs the user: [id]" or "failed: [id]".
+Every line starts with "ok:", "warning [id]:", "needs the user [id]:" or "failed [id]:".
 Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed, 5 a secret leaked.
 
 Secret values never reach a document, the screen or a command line: they are read into
-memory only to build the credentials file and to search the output for leaks.
+memory only to build the credentials file and to search the output for leaks. Two exceptions,
+both for keepassxc-cli: an S3 access key ID (not its secret key) is the entry's username on its
+command line, and an attached file is written for a moment to a private temp folder (0700).
 """
 
 import argparse
@@ -101,6 +103,10 @@ def version():
     with open(os.path.join(SKILL, "SKILL.md"), encoding="utf-8") as f:
         front = f.read().split("---")[1]
     return yaml.safe_load(front)["metadata"]["version"]
+
+
+def plural(n, word):
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
 
 
 def slugify(text):
@@ -302,12 +308,21 @@ class Ansibro:
             p = subprocess.Popen([age, "-d", "-i", self.key, self.state_age], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             data = {}
-            with tarfile.open(fileobj=p.stdout, mode="r|") as tar:
-                for m in tar:
-                    if m.isfile():
-                        data[m.name] = tar.extractfile(m).read()
-            if p.wait() != 0:
-                failed("age", "age could not open state.age: " + p.stderr.read().decode(errors="replace").strip())
+            try:
+                with tarfile.open(fileobj=p.stdout, mode="r|") as tar:
+                    for m in tar:
+                        if m.isfile():
+                            data[m.name] = tar.extractfile(m).read()
+                bad_tar = False
+            except tarfile.TarError:
+                bad_tar = True
+            p.stdout.close()
+            err = p.stderr.read().decode(errors="replace").strip()
+            p.stderr.close()
+            if p.wait() != 0 or bad_tar:
+                err = err or "its content is not a tar archive"
+                failed("age", f"age could not open state.age: {err}. Check that {self.key} (or ANSIBRO_KEY) "
+                       "is the key that encrypted it.")
             self._age_cache = (stamp, data)
         return {n: v for n, v in self._age_cache[1].items() if want(n)}
 
@@ -393,6 +408,7 @@ class Ansibro:
             os.makedirs(d, mode=0o700, exist_ok=True)
             os.chmod(d, 0o700)
             fd = os.open(os.path.join(d, name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            os.fchmod(fd, 0o600)  # the mode above applies only to a new file
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(text + "\n")
 
@@ -871,7 +887,13 @@ def load_answers(out):
     path = os.path.join(out, "handover.yml")
     if not os.path.isfile(path):
         needs_user("no-answers", f"{path} is missing. Run init first, then fill it in with the user.")
-    a = load_yaml(path)
+    try:
+        a = load_yaml(path)
+    except yaml.YAMLError as e:
+        failed("answers", f"handover.yml is not valid YAML: {e}", code=2)
+    if not isinstance(a, dict):
+        failed("answers", "handover.yml must be a list of settings (key: value), as in handover.example.yml",
+               code=2)
     unknown = sorted(set(a) - ANSWER_KEYS)
     if not unknown:
         a = with_defaults(a)
@@ -884,7 +906,11 @@ def load_answers(out):
         failed("answers", f"lang must be id, en or [id, en], got {bad}", code=2)
     a["lang"] = langs
     people = a.get("people") or []
+    if not isinstance(people, list):
+        failed("answers", "people must be a list, one item per person (name:, os:, persona:)", code=2)
     for p in people:
+        if not isinstance(p, dict):
+            failed("answers", f"people: each person needs name:, os: and persona:, got {p!r}", code=2)
         if p.get("os") and p["os"] not in OSES:
             failed("answers", f"people: os must be one of {', '.join(OSES)}, got {p['os']}", code=2)
         if p.get("persona") and p["persona"] not in ("viewer", "operator", "successor"):
@@ -1491,6 +1517,7 @@ def prepare_out(out, create):
 
 def cmd_doctor(ab, args, data):
     code = 0
+    ok(f"dejavu {version()}")
     ab.check_folder()
     av = ab.version()
     ok(f"ansibro {av['version'] or av['describe'] or '(version unknown)'} in {ab.dir}")
@@ -1593,8 +1620,8 @@ def cmd_facts(ab, args, data, quiet=False):
     facts, ca_file = build_facts(ab, args, data)
     write_json(os.path.join(out, "facts.json"), facts)
     if not quiet:
-        ok(f"facts.json: {len(facts['nodes'])} servers, {len(facts['apps'])} apps, "
-           f"{sum(1 for s in facts['secrets'] if s['status'] == 'present')} secrets (names only)")
+        ok(f"facts.json: {plural(len(facts['nodes']), 'server')}, {plural(len(facts['apps']), 'app')}, "
+           f"{plural(sum(1 for s in facts['secrets'] if s['status'] == 'present'), 'secret')} (names only)")
         for w in facts["warnings"]:
             extra = ", ".join(f"{k}={v}" for k, v in w.items() if k != "id")
             warning(w["id"], extra or "see references/troubleshooting.md")
@@ -1619,7 +1646,9 @@ def cmd_check(ab, args, data):
             f.write("\n".join(lines) + "\n")
         servers = server_facts(ab)
         write_json(os.path.join(chk, "servers.json"), servers)
-        ok(f"server details read from {len(servers)} servers")
+        reached = sum(1 for v in servers.values() if v.get("reached"))
+        ok(f"server details read from {plural(reached, 'server')}"
+           + (f" ({len(servers) - reached} not reached)" if reached < len(servers) else ""))
     facts, _ca = build_facts(ab, args, data)
     write_json(os.path.join(chk, "web.json"), web_facts(facts, load_answers(out) if os.path.isfile(
         os.path.join(out, "handover.yml")) else {}))
@@ -1637,6 +1666,10 @@ def server_facts(ab):
         r = run([ab.ansible("check reads the server details with ansible"), "all", "-m", "ansible.builtin.setup", "-a",
                  "gather_subset=!all,hardware,distribution", "-e", f"secrets_dir={tmp}"], cwd=ab.dir, env=ab.env())
     servers = {}
+    if r.returncode != 0 and not re.search(r"^\S+ \| [A-Z]+!? => ", r.stdout, re.M):
+        warning("server-facts", "ansible could not read the server details: "
+                + (r.stderr or r.stdout).strip()[-300:])
+        return servers
     for block in re.split(r"\n(?=\S+ \| [A-Z]+!? => )", "\n" + r.stdout):
         m = re.match(r"^\s*(\S+) \| ([A-Z]+)!? => (.*)$", block, re.S)
         if not m:
@@ -1645,7 +1678,11 @@ def server_facts(ab):
         if status != "SUCCESS":
             servers[name] = {"reached": False}
             continue
-        f = json.loads(body).get("ansible_facts", {})
+        try:
+            f = json.loads(body).get("ansible_facts", {})
+        except ValueError:
+            servers[name] = {"reached": False}
+            continue
         root = next((x for x in f.get("ansible_mounts", []) if x.get("mount") == "/"), {})
         key = f.get("ansible_ssh_host_key_ed25519_public")
         fp = None
@@ -2032,8 +2069,11 @@ COMMANDS = {"doctor": cmd_doctor, "init": cmd_init, "facts": cmd_facts_only, "ch
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="handover.py", description=__doc__.split("\n\n")[0])
+    intro, _, rest = __doc__.partition("\n\n")
+    p = argparse.ArgumentParser(prog="handover.py", description=intro, epilog=rest,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("command", choices=list(COMMANDS))
+    p.add_argument("--version", action="version", version=f"dejavu {version()}")
     p.add_argument("--ansibro", default=".", help="the ansibro folder (default: here)")
     p.add_argument("--config", default="config.yml", help="the config that was installed (default: config.yml)")
     p.add_argument("--out", help="the output folder (default: ~/Handover/<domain>-<config>)")
