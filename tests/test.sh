@@ -298,5 +298,71 @@ if ! command -v ansible >/dev/null 2>&1 && [ ! -x "$(dirname "$("$PY" -c 'import
   has "ansible is not installed"
 fi
 
+# --- doctor --fix: installs what needs no admin rights, never sudo, and is safe to run twice ---
+# Usage: path_without NAME... -> a PATH folder with every command of this machine except NAME...
+path_without() {
+  d="$TMP/path-$1"
+  rm -rf "$d" && mkdir -p "$d"
+  for dir in /usr/local/bin /opt/homebrew/bin /usr/bin /bin; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/*; do
+      n="${f##*/}"
+      for skip in "$@"; do [ "$n" != "$skip" ] || continue 2; done
+      [ -e "$d/$n" ] || ln -s "$f" "$d/$n"
+    done
+  done
+  # A sudo that only leaves a mark: dejavu must never call it. (rm first: never write through the
+  # link to the real sudo.)
+  rm -f "$d/sudo"
+  printf '#!/bin/sh\ntouch "%s/sudo-was-called"\nexit 1\n' "$TMP" >"$d/sudo"
+  chmod +x "$d/sudo"
+  echo "$d"
+}
+system minimal
+# keepassxc-cli missing on Linux: --fix asks the user (it needs sudo), and runs nothing as root.
+if [ "$(uname)" = Linux ]; then
+  nokp="$(path_without keepassxc-cli keepassxc)"
+  expect 3 env PATH="$nokp" "$PY" "$H" doctor --fix --ansibro "$TMP/minimal/ansibro"
+  has "needs the user [keepassxc]"
+  has "sudo apt-get install"
+  if [ -e "$TMP/sudo-was-called" ]; then fail "doctor --fix called sudo"; else pass; fi
+fi
+# (These need the network, like the PDF tests.)
+if [ -n "$PDF" ]; then
+  nomise="$(path_without mise pandoc typst d2)"
+  # The PDF tools are already downloaded in $HOME: share them, so only mise itself is downloaded.
+  share="${MISE_DATA_DIR:-$HOME/.local/share/mise}"
+  # Usage: fixdoc HOME [ARGS] -> doctor without mise on PATH, with that home folder
+  fixdoc() {
+    h="$1"
+    shift
+    mkdir -p "$h"
+    env PATH="$nomise" HOME="$h" MISE_DATA_DIR="$share" "$PY" "$H" doctor --ansibro "$TMP/minimal/ansibro" "$@"
+  }
+  # 1. A mise that is already there but not on PATH (brework's in /opt/homebrew/bin, the container's in
+  #    /usr/local/bin) is used: no second mise.
+  for m in /opt/homebrew/bin/mise /usr/local/bin/mise; do
+    [ -x "$m" ] || continue
+    expect 0 fixdoc "$TMP/home-has-mise" --fix
+    has "pandoc: mise"
+    if printf '%s\n' "$out" | grep -qF "installing mise"; then fail "a second mise was installed next to $m"; else pass; fi
+    if [ -e "$TMP/home-has-mise/.local/bin/mise" ]; then fail "mise was installed into ~/.local/bin next to $m"; else pass; fi
+    break
+  done
+  # 2. No mise anywhere: doctor says --fix helps; --fix puts mise in ~/.local/bin and downloads the
+  #    PDF tools; a second run installs nothing again.
+  export DEJAVU_TEST_NO_SYSTEM_MISE=1
+  expect 3 fixdoc "$TMP/home-no-mise"
+  has "doctor --fix"
+  expect 0 fixdoc "$TMP/home-no-mise" --fix
+  has "mise installed: $TMP/home-no-mise/.local/bin/mise"
+  has "pandoc: mise"
+  if [ -x "$TMP/home-no-mise/.local/bin/mise" ]; then pass; else fail "mise is not in ~/.local/bin"; fi
+  expect 0 fixdoc "$TMP/home-no-mise" --fix
+  if printf '%s\n' "$out" | grep -qF "installing"; then fail "the second doctor --fix installed again"; else pass; fi
+  unset DEJAVU_TEST_NO_SYSTEM_MISE
+  if [ -e "$TMP/sudo-was-called" ]; then fail "doctor --fix called sudo"; else pass; fi
+fi
+
 echo "=== dejavu tests: $passed passed, $failed failed"
 [ "$failed" = 0 ]

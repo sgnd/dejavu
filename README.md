@@ -37,7 +37,7 @@ It uses tools that already exist: [pandoc](https://pandoc.org) and [Typst](https
 - The computer that installed the system with ansibro (macOS or Linux), and the ansibro folder on it. That folder holds the passwords, in `state/`.
 - ansibro 1.2 or newer.
 - An AI agent: Claude Code, Codex, Gemini CLI or another one that reads skills.
-- [KeePassXC](https://keepassxc.org/download/) and [mise](https://mise.jdx.dev). The agent tells you how to install them if they are missing. mise downloads pandoc, Typst and d2 by itself.
+- [KeePassXC](https://keepassxc.org/download/) and [mise](https://mise.jdx.dev). When they are missing, the agent asks, then installs what needs no admin rights: mise in your home folder (it downloads pandoc, Typst and d2), and on a Mac with Homebrew also KeePassXC. On Linux, it gives you the command for KeePassXC (it needs your password).
 
 ## Install
 

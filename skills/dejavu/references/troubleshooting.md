@@ -40,9 +40,10 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `answers`, `no-answers` | Ask the missing questions (references/questions.md), fill `handover.yml`, run again. Or build with `--draft`. |
 | `no-config` | Ask which config was installed; pass it with `--config`. |
 | `age-key` | state.age is encrypted and its key is not here. Ask the user for the key file, or set `ANSIBRO_KEY=/path/to/age.key`. |
-| `age` | Install age: macOS `brew install age`, Linux `sudo apt-get install age`. |
-| `tools` | Install mise (`curl https://mise.run \| sh`). dejavu then downloads pandoc, Typst and d2 itself. |
-| `keepassxc` | Install KeePassXC: macOS `brew install --cask keepassxc`; Debian 13 or Ubuntu 26.04 `sudo apt-get install keepassxc-minimal`; Ubuntu 24.04 `sudo apt-get install keepassxc`; Fedora `sudo dnf install keepassxc`. |
+| `age` | macOS with Homebrew: `doctor --fix` installs it (ask first). Else: macOS `brew install age`, Linux `sudo apt-get install age` (the user runs it: it needs their password). |
+| `tools` | Ask the user, then run `doctor --fix`: it uses a mise that is already there (also Homebrew's, from brework) or installs one into `~/.local/bin` (no admin rights), then downloads pandoc, Typst and d2. It never changes shell files or mise's global config. Without network, or when it fails, the user installs mise (`curl https://mise.run \| sh`). |
+| `keepassxc` | macOS with Homebrew: ask the user, then run `doctor --fix` (it runs `brew install --cask keepassxc`). Otherwise the user installs it (it needs their password): macOS without Homebrew from keepassxc.org; Debian 13 or Ubuntu 26.04 `sudo apt-get install keepassxc-minimal`; Ubuntu 24.04 `sudo apt-get install keepassxc`; Fedora `sudo dnf install keepassxc`. |
+| `brew` (warning) | `doctor --fix` could not install a tool with Homebrew. | Show the user the message; they run the brew command themselves. |
 | `no-state`, `no-passphrase` | There is no state/ here: this is not the folder that ran `./install.sh`. Or run `build` first. |
 | `deliver` | The pack is ready. Tell the user how to hand over the file and the passphrase (SKILL.md, step 7). |
 
