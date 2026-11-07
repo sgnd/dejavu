@@ -42,7 +42,7 @@ handover.py build
 
 - A fact ansibro has is read from ansibro, never written in dejavu. When ansibro has it only in prose, it goes into `apps.yml`, and `tests/drift.py` checks it against ansibro.
 - Templates get the facts and the answers, never a secret value. Text typed by the user goes through the `md` filter; front-matter values through `q`.
-- Change `id` and `en` in the same pull request. The tests compare their structure.
+- Change `id` and `en` in the same pull request, with the same headings, anchors and tables. The golden files show both; no test compares them.
 
 ## Check your change
 

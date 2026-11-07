@@ -1,10 +1,10 @@
 # Every message, and what to do
 
-Each line of `handover.py` starts with `ok:`, `warning: [id]`, `needs the user: [id]` or `failed: [id]`. Find the id here.
+Each status line of `handover.py` starts with `ok:`, `warning: [id]`, `needs the user: [id]` or `failed: [id]`. Find the id here.
 
 ## Warnings from `facts`: the user decides
 
-Go through each with the user. They either fix it (a change in `config.yml`, then `./install.sh`, only with their consent) or accept it: then write it into `known_issues` in their words. Every warning also appears in the documents, in the known-issues appendix.
+Go through each with the user. They either fix it (a change in `config.yml`, then `./install.sh`, only with their consent) or accept it: then write it into `known_issues` in their words. Every warning in this section also appears in the documents, in the known-issues appendix.
 
 | Id | What it means | What to say or do |
 | --- | --- | --- |
@@ -23,9 +23,17 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `unknown-app` | An app dejavu does not know (a newer ansibro). | The documents use ansibro's own short text. Ask the user for a sentence about it and put it in `extra_apps`. |
 | `not-documented` | A setting in `config.yml` that dejavu does not know. | It is left out of the documents. Report it so dejavu learns it. |
 | `ansibro-untested-version` | ansibro is newer or older than the versions this skill was tested with. | The documents are still made; read them carefully. |
-| `handover-json-outdated` | ansibro's `state/handover.json` does not match `config.yml` (other servers, apps, addresses or app placement): the config changed after the last install. dejavu read the settings through ansible instead. | Ask whether the change was meant to be installed. If yes, run `./install.sh` (with consent) before the handover; if not, undo it in `config.yml`. |
+| `handover-json-outdated` | ansibro's `state/handover.json` does not match `config.yml` (other servers, apps, addresses or app placement): the config changed after the last install, or the file is broken or in an unknown form. dejavu read the settings through ansible instead. | Ask whether the change was meant to be installed. If yes, run `./install.sh` (with consent) before the handover; if not, undo it in `config.yml`. |
 | `ansibro-dirty` | The ansibro folder has changes that are not committed. | Check that what was installed is what is in the folder. |
 | `shared-state` | There are several `config*.yml` here, sharing one state/. | Make sure `--config` names the one this handover is about. |
+
+## Other warnings (doctor, check, build)
+
+These are printed by other commands and are not in the documents.
+
+| Id | What it means | What to do |
+| --- | --- | --- |
+| `python` | ansibro's Python is older than 3.12. | Run dejavu with ansibro's `.venv/bin/python`; run `./install.sh` again. |
 | `weak-secret` | A password in `config.yml` (backup or alerts) is shorter than 6 characters, so the leak check cannot search for it. | Recommend a longer one. |
 | `state-not-encrypted` | state/ is open (plain) while an age key exists. | Suggest `scripts/state.sh close` after the build. |
 | `check-failed` | ansibro's acceptance test has FAIL lines, or `tests/check.py` stopped with an error (then the last line says its exit code). | Explain each one; fix with consent, or record it as a known issue. |
@@ -41,10 +49,10 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `no-config` | Ask which config was installed; pass it with `--config`. |
 | `age-key` | state.age is encrypted and its key is not here. Ask the user for the key file, or set `ANSIBRO_KEY=/path/to/age.key`. |
 | `age` | macOS with Homebrew: `doctor --fix` installs it (ask first). Else: macOS `brew install age`, Linux `sudo apt-get install age` (the user runs it: it needs their password). |
-| `tools` | Ask the user, then run `doctor --fix`: it uses a mise that is already there (also Homebrew's, from brework) or installs one into `~/.local/bin` (no admin rights), then downloads pandoc, Typst and d2. It never changes shell files or mise's global config. Without network, or when it fails, the user installs mise (`curl https://mise.run \| sh`). |
+| `tools` (also a warning) | Ask the user, then run `doctor --fix`: it uses a mise that is already there (also Homebrew's, from brework) or installs one into `~/.local/bin` (no admin rights), then downloads pandoc, Typst and d2. It never changes shell files or mise's global config. Without network, or when it fails, the user installs mise (`curl https://mise.run \| sh`). |
 | `keepassxc` | macOS with Homebrew: ask the user, then run `doctor --fix` (it runs `brew install --cask keepassxc`). Otherwise the user installs it (it needs their password): macOS without Homebrew from keepassxc.org; Debian 13 or Ubuntu 26.04 `sudo apt-get install keepassxc-minimal`; Ubuntu 24.04 `sudo apt-get install keepassxc`; Fedora `sudo dnf install keepassxc`. |
 | `brew` (warning) | `doctor --fix` could not install a tool with Homebrew. | Show the user the message; they run the brew command themselves. |
-| `no-state`, `no-passphrase` | There is no state/ here: this is not the folder that ran `./install.sh`. Or run `build` first. |
+| `no-state` (also a warning), `no-passphrase` | There is no state/ here: this is not the folder that ran `./install.sh`. Or run `build` first. |
 | `ssh-key` | dejavu made the client's SSH key (`ssh_handover: generated`). It is kept in `state/handover/`, so every build hands over the same key. | Ask the user to add `dist/<slug>_ed25519.pub` to `~/.ssh/authorized_keys` on every server before the handover meeting. |
 | `deliver` | The pack is ready. Tell the user how to hand over the file and the passphrase (SKILL.md, step 7). |
 
