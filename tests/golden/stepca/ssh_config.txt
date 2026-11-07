@@ -1,29 +1,29 @@
-# SSH settings for PT Maju Bersama (apps.internal.example), made by dejavu 1.1.0.
+# SSH settings for Northwind Logistics Ltd (apps.internal.example), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 
-Host maju-app1
+Host northwind-app1
   HostName 192.168.50.11
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-data1
+Host northwind-data1
   HostName 192.168.50.21
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
-  ProxyJump maju-app1
+  ProxyJump northwind-app1
 
-# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# A private pipe to the databases and other services: run "ssh -N northwind-tunnel" and keep it open.
 # Then connect to 127.0.0.1 and the local port below.
-Host maju-tunnel
+Host northwind-tunnel
   HostName 192.168.50.11
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
   ExitOnForwardFailure yes
   # MariaDB on data1

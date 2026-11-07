@@ -11,7 +11,7 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `allowlist-empty` | `ssh.allow_from` or `admin_allow_from` is empty, so anyone on the internet can try to log in to SSH or open the admin pages. | Recommend listing the office or VPN IPs. The documents say "open to anyone". |
 | `tls-selfsigned` | The web pages use a certificate browsers do not trust, so every page shows a warning. | Recommend `tls: custom` (a bought or company certificate) or an internal CA (`acme_server`). |
 | `custom-cert-expires` | The certificate in `tls_cert` ends within 90 days. | Renew it before the handover, or record who renews it. |
-| `no-backup` | `backup:` is not set: nothing is backed up. | Strongly recommend setting a backup repository. The BAST notes it. |
+| `no-backup` | `backup:` is not set: nothing is backed up. | Strongly recommend setting a backup repository. The handover certificate notes it. |
 | `backup-no-alert` | Backups run, but no monitoring app (victoria) alerts when they stop. | Recommend victoria, or a regular manual check. |
 | `no-monitoring` | No monitoring app: nobody is told when something breaks. | Recommend victoria (full) or beszel (light). |
 | `uptimekuma-notifications-manual` | Uptime Kuma checks the pages, but sends no message until notifications are set in its own page. | Set them at the handover meeting (it is a row in Annex 1). |
@@ -38,6 +38,8 @@ These are printed by other commands and are not in the documents.
 | `check-failed` | ansibro's acceptance test has FAIL lines, or `tests/check.py` stopped with an error (then the last line says its exit code). | Explain each one; fix with consent, or record it as a known issue. |
 | `server-facts` | `check` could not read the servers' details (vCPU, memory, disk, OS, SSH host key) with ansible; its last message is shown. | Check that the servers are reachable over SSH from this machine, then run `check` again. The documents leave those details out. |
 | `logo` | A logo path in `handover.yml` is not a file. | Fix the path, or leave it empty. |
+| `lang` | `handover.yml` (from dejavu 1.1 or older) asks for documents in Indonesian. The documents are in English only now. | Remove the `lang:` line from `handover.yml`. |
+| `answers-renamed` | `handover.yml` (from dejavu 1.1 or older) has the section `bast:`. It is read as `certificate:`. | Rename `bast:` to `certificate:` and `mengetahui:` to `acknowledged_by:`, and remove `meterai:`. |
 | `open-warnings` | The build lists the warnings that are still open. | Make sure each was discussed. |
 | `keepassxc` (warning) | A draft was built without the credentials file. | Install keepassxc-cli before the final build. |
 | `brew` (warning) | `doctor --fix` could not install a tool with Homebrew. | Show the user the message; they run the brew command themselves. |

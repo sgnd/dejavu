@@ -65,10 +65,7 @@
       "ha": false,
       "known": true,
       "info": "10.1.0.5:5432 (user postgres, password state/secrets/postgres)",
-      "about": {
-        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
-        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
-      },
+      "about": "An SQL database for your apps (and for Kong, Keycloak and Authelia).",
       "web": [],
       "ports": [
         {
@@ -83,14 +80,8 @@
       "health": "pg_isready",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
-          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
-        },
-        {
-          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
-          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
-        }
+        "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.",
+        "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
       ],
       "images": [
         {
@@ -112,10 +103,7 @@
       "ha": false,
       "known": true,
       "info": "https://traefik.demo.example.net (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
-        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
-      },
+      "about": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.",
       "web": [
         {
           "host": "traefik",
@@ -151,10 +139,7 @@
       "port": 5000,
       "version": "3.1.2",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
-        "en": "A private image registry on every manager. All servers pull images from it."
-      }
+      "about": "A private image registry on every manager. All servers pull images from it."
     }
   ],
   "backup": {

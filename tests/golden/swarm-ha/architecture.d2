@@ -1,0 +1,45 @@
+# The architecture of northwind.example.org, made by dejavu 1.1.0 from ansibro's facts.
+direction: down
+users: "Users and admins" {shape: person}
+dns: "DNS *.northwind.example.org" {shape: cloud}
+users -> dns: HTTPS 443
+cluster: "Docker Swarm" {
+  "data1": "data1\nstandalone\n10.0.0.21" {
+    tooltip: "postgres, redis, garage, victoria"
+  }
+  "data2": "data2\nstandalone\n10.0.0.22" {
+    tooltip: "postgres, redis, garage, uptimekuma"
+  }
+  "data3": "data3\nstandalone\n10.0.0.23" {
+    tooltip: "postgres, redis, garage"
+  }
+  "manager1": "manager1\nmanager · gateway\n10.0.0.11" {
+    style.stroke-width: 3
+  }
+  "manager2": "manager2\nmanager · gateway\n10.0.0.12" {
+    style.stroke-width: 3
+  }
+  "manager3": "manager3\nmanager · gateway\n10.0.0.13" {
+    style.stroke-width: 3
+  }
+  "worker1": "worker1\nworker · app\n10.0.0.31" {
+  }
+  "worker2": "worker2\nworker · app\n10.0.0.32" {
+  }
+  "worker3": "worker3\nworker · app\n10.0.0.33" {
+  }
+  services: "Cluster apps\nauthelia, portainer, traefik" {shape: hexagon}
+}
+apps_1: "postgres, redis, garage, victoria" {shape: cylinder}
+cluster."data1" -> apps_1
+apps_2: "postgres, redis, garage, uptimekuma" {shape: cylinder}
+cluster."data2" -> apps_2
+apps_3: "postgres, redis, garage" {shape: cylinder}
+cluster."data3" -> apps_3
+dns -> cluster."manager1": "80/443"
+dns -> cluster."manager2": "80/443"
+dns -> cluster."manager3": "80/443"
+backup: "Backup\ns3 · s3.example.com" {shape: stored_data}
+cluster -> backup: "restic 02:00"
+alerts: "Alerts\nslack" {shape: page}
+cluster -> alerts

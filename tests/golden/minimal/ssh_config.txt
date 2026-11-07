@@ -1,21 +1,21 @@
-# SSH settings for CV Demo (demo.example.net), made by dejavu 1.1.0.
+# SSH settings for Demo Ltd (demo.example.net), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 
-Host cv-demo-srv
+Host demo-ltd-srv
   HostName 198.51.100.50
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/cv-demo_ed25519
+  IdentityFile ~/.ssh/demo-ltd_ed25519
   IdentitiesOnly yes
 
-# A private pipe to the databases and other services: run "ssh -N cv-demo-tunnel" and keep it open.
+# A private pipe to the databases and other services: run "ssh -N demo-ltd-tunnel" and keep it open.
 # Then connect to 127.0.0.1 and the local port below.
-Host cv-demo-tunnel
+Host demo-ltd-tunnel
   HostName 198.51.100.50
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/cv-demo_ed25519
+  IdentityFile ~/.ssh/demo-ltd_ed25519
   IdentitiesOnly yes
   ExitOnForwardFailure yes
   # PostgreSQL on srv

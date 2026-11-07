@@ -3,9 +3,6 @@
 # Never write a password here.
 # Unknown answers stay empty (null): the documents then say "not provided", never a guess.
 
-# Language of the documents: id, en, or [id, en] (two full sets; the Indonesian one prevails).
-lang: id
-
 # Short name of the system for the documents, e.g. Production, Staging.
 environment: null
 
@@ -13,36 +10,34 @@ environment: null
 slug: null
 
 document:
-  number: null          # e.g. 001/DOK/VENDOR/XI/2026
+  number: null          # e.g. DOC-2026-001
   version: "1.0"        # raise it for every re-issue
-  classification: null  # default: TERBATAS (id) / CONFIDENTIAL (en)
+  classification: null  # default: CONFIDENTIAL
   prepared_by: null     # name
   reviewed_by: null
   approved_by: null
   revisions: []         # [{version: "1.0", date: 2026-11-04, by: Name, change: First issue}]
 
-bast:
-  number: null          # e.g. 001/BAST/VENDOR/XI/2026
+# The Handover and Acceptance Certificate, signed by both parties.
+certificate:
+  number: null          # e.g. HC-2026-001
   date: null            # 2026-11-04
-  place: null           # e.g. Jakarta
-  title: null           # default: BERITA ACARA SERAH TERIMA PEKERJAAN / HANDOVER AND ACCEPTANCE CERTIFICATE
+  place: null           # e.g. London
+  title: null           # default: HANDOVER AND ACCEPTANCE CERTIFICATE
   stage: single         # single, pho (provisional: work done, warranty starts), fho (final)
   fho_date: null        # with pho: the planned final handover
-  contract:             # the basis: contract, SPK or PO
+  contract:             # the basis: a contract, work order or purchase order
     name: null
     number: null
     date: null
-  first_party: vendor   # who is PIHAK PERTAMA: vendor (the one handing over) or client
-  meterai:
-    enabled: false      # a Rp10.000 stamp (meterai) box
-    side: client        # client or vendor
+  first_party: vendor   # who is named and signs first: vendor (the one handing over) or client
   copies: 2             # printed copies with equal legal force
-  mengetahui: []        # [{name: , title: , company: }] (people who acknowledge it)
+  acknowledged_by: []   # [{name: , title: , company: }] (people who acknowledge it)
   witnesses: []         # [{name: , title: , company: }]
 
 client:
-  name: null            # PT Contoh Klien
-  short: null           # Contoh (used in file names)
+  name: null            # Example Corp
+  short: null           # Example (used in file names)
   address: null
   logo: null            # path to a PNG or SVG
   signer: {name: null, title: null}
@@ -71,7 +66,7 @@ dns:
 
 # The client's staff who need access. persona: viewer (web pages), operator (also SSH),
 # successor (will run ansibro). os: windows, macos, linux. allow_from: their public IP or office range.
-people: []              # [{name: Budi, persona: operator, os: windows, allow_from: [198.51.100.7]}]
+people: []              # [{name: Alex, persona: operator, os: windows, allow_from: [198.51.100.7]}]
 
 # client_key: the client sends their own SSH public key (safest).
 # generated: dejavu makes a key for a client who cannot; it goes into the credentials file.
@@ -91,7 +86,7 @@ delivery:
 
 support:
   contacts: []           # [{name: , role: , phone: , email: }]
-  hours: null            # e.g. Mon-Fri 09:00-17:00 WIB
+  hours: null            # e.g. Mon-Fri 09:00-17:00 UTC
   sla: null              # e.g. response within 4 hours
   warranty:
     months: null         # e.g. 3
@@ -105,10 +100,10 @@ tls:
 
 font: null               # {name: Inter, dir: /path/to/fonts} for another font in the PDFs
 
-# Free text, in the language of the documents. Plain words, no passwords.
+# Free text, in English. Plain words, no passwords.
 summary_note: null
 known_issues: []         # accepted warnings and open items
 out_of_scope: []         # what was not part of the work
 extra_apps: []           # the client's own apps: [{name: , about: , url: }]
-notes: []                # extra notes for the BAST
+notes: []                # extra notes for the handover certificate
 attach: []               # extra files for the credentials file (paths), e.g. a VPN profile

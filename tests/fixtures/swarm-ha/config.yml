@@ -13,7 +13,7 @@
 # Use it: cp examples/swarm-ha.yml config.yml, change the lines marked "change", run ./install.sh.
 # More settings (backup, firewall, alerts): config.example.yml.
 
-domain: nusa.example.co.id                 # change: your domain; DNS *.example.com -> manager1's public IP
+domain: northwind.example.org                 # change: your domain; DNS *.example.com -> manager1's public IP
 tls: selfsigned
 wireguard: true
 admin_allow_from: [198.51.100.0/24, 192.0.2.10]

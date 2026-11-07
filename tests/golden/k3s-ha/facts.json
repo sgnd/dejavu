@@ -148,10 +148,7 @@
       "ha": false,
       "known": true,
       "info": "https://beszel.platform.example.com (user admin@platform.example.com, password state/secrets/beszel_admin). Agents run on every server",
-      "about": {
-        "id": "Dasbor sederhana CPU, memori, disk, dan container setiap server, dengan peringatan yang diatur di halamannya.",
-        "en": "A simple dashboard of CPU, memory, disk and containers on every server, with alerts set in its own page."
-      },
+      "about": "A simple dashboard of CPU, memory, disk and containers on every server, with alerts set in its own page.",
       "web": [
         {
           "host": "beszel",
@@ -170,10 +167,7 @@
       "health": "beszel health",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Peringatan Beszel diatur sendiri di halaman Beszel. Installer login dengan kata sandi admin setiap kali dijalankan.",
-          "en": "Beszel alerts are set up in Beszel's own page. The installer logs in with the admin password on every run."
-        }
+        "Beszel alerts are set up in Beszel's own page. The installer logs in with the admin password on every run."
       ],
       "images": [
         {
@@ -201,10 +195,7 @@
       "ha": false,
       "known": true,
       "info": "https://keycloak.platform.example.com (user admin, password state/secrets/keycloak_admin)",
-      "about": {
-        "id": "Server login tunggal (SSO). Satu login (OIDC/SAML) untuk aplikasi dan pengguna Anda.",
-        "en": "A single sign-on server. One login (OIDC/SAML) for your apps and users."
-      },
+      "about": "A single sign-on server. One login (OIDC/SAML) for your apps and users.",
       "web": [
         {
           "host": "keycloak",
@@ -229,14 +220,8 @@
       "health": "/health/ready",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Halaman Keycloak terbuka untuk umum (tidak dibatasi IP), karena pengguna aplikasi Anda login di sana.",
-          "en": "Keycloak's page is open to anyone (no IP limit), because the users of your apps log in there."
-        },
-        {
-          "id": "Bila Keycloak menjadi login admin, realm \"ansibro\" dengan user admin melindungi halaman admin. Aplikasi autentikator diatur saat login pertama; bila yang login pertama adalah vendor, reset dulu.",
-          "en": "When Keycloak is the admin login, the realm \"ansibro\" with user admin guards the admin pages. The authenticator app is set up at the first login; if the vendor logged in first, reset it."
-        }
+        "Keycloak's page is open to anyone (no IP limit), because the users of your apps log in there.",
+        "When Keycloak is the admin login, the realm \"ansibro\" with user admin guards the admin pages. The authenticator app is set up at the first login; if the vendor logged in first, reset it."
       ],
       "images": [
         {
@@ -264,10 +249,7 @@
       "ha": false,
       "known": true,
       "info": "APIs at https://kong.platform.example.com, Kong Manager https://kong-manager.platform.example.com (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Gerbang API. Satu alamat untuk API Anda, dengan API key, batas akses, dan rute.",
-        "en": "An API gateway. One address for your APIs, with API keys, rate limits and routes."
-      },
+      "about": "An API gateway. One address for your APIs, with API keys, rate limits and routes.",
       "web": [
         {
           "host": "kong",
@@ -292,14 +274,8 @@
       "health": "kong health",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Pengaturan Kong tersimpan di database PostgreSQL \"kong\". Layanan API Anda harus bergabung ke jaringan \"kong\".",
-          "en": "Kong keeps its settings in the PostgreSQL database \"kong\". Your API services must join the network \"kong\"."
-        },
-        {
-          "id": "Alamat kong.<domain> terbuka untuk umum; itulah alamat API Anda.",
-          "en": "kong.<domain> is open to anyone; it is the address of your APIs."
-        }
+        "Kong keeps its settings in the PostgreSQL database \"kong\". Your API services must join the network \"kong\".",
+        "kong.<domain> is open to anyone; it is the address of your APIs."
       ],
       "images": [
         {
@@ -323,10 +299,7 @@
       "ha": false,
       "known": true,
       "info": "http://10.0.0.22:8200, https://openbao.platform.example.com (root token state/secrets/openbao_root_token)",
-      "about": {
-        "id": "Brankas untuk rahasia aplikasi Anda (kata sandi, API key). Aplikasi membacanya lewat API.",
-        "en": "A safe for your apps' secrets (passwords, API keys). Apps read them through an API."
-      },
+      "about": "A safe for your apps' secrets (passwords, API keys). Apps read them through an API.",
       "web": [
         {
           "host": "openbao",
@@ -349,14 +322,8 @@
       "health": "/v1/sys/health",
       "laptop": "web",
       "notes": [
-        {
-          "id": "OpenBao terkunci (sealed) setiap kali restart, dan health check-nya tetap hijau saat terkunci. Buka kuncinya dengan unseal key di halaman web, atau jalankan ./install.sh lagi.",
-          "en": "OpenBao is sealed after every restart, and its health check stays green while sealed. Unseal it with the unseal key in the web page, or run ./install.sh again."
-        },
-        {
-          "id": "Installer memakai root token setiap kali dijalankan; mencabutnya membuat instalasi berikutnya gagal.",
-          "en": "The installer uses the root token on every run; revoking it breaks the next install."
-        }
+        "OpenBao is sealed after every restart, and its health check stays green while sealed. Unseal it with the unseal key in the web page, or run ./install.sh again.",
+        "The installer uses the root token on every run; revoking it breaks the next install."
       ],
       "images": [
         {
@@ -378,10 +345,7 @@
       "ha": false,
       "known": true,
       "info": "https://portainer.platform.example.com (user admin, password state/secrets/portainer_admin)",
-      "about": {
-        "id": "Halaman web untuk melihat dan mengelola container dan stack di cluster.",
-        "en": "A web page to see and manage the containers and stacks of the cluster."
-      },
+      "about": "A web page to see and manage the containers and stacks of the cluster.",
       "web": [
         {
           "host": "portainer",
@@ -399,10 +363,7 @@
       "health": "POST /api/auth",
       "laptop": "web",
       "notes": [
-        {
-          "id": "File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.",
-          "en": "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
-        }
+        "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
       ],
       "images": [
         {
@@ -434,10 +395,7 @@
       "ha": true,
       "known": true,
       "info": "10.0.0.21:5432 (user postgres, password state/secrets/postgres)",
-      "about": {
-        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
-        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
-      },
+      "about": "An SQL database for your apps (and for Kong, Keycloak and Authelia).",
       "web": [],
       "ports": [
         {
@@ -452,14 +410,8 @@
       "health": "pg_isready",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
-          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
-        },
-        {
-          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
-          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
-        }
+        "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.",
+        "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
       ],
       "images": [
         {
@@ -493,10 +445,7 @@
       "ha": false,
       "known": true,
       "info": "https://traefik.platform.example.com (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
-        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
-      },
+      "about": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.",
       "web": [
         {
           "host": "traefik",
@@ -514,10 +463,7 @@
       "health": "traefik healthcheck --ping",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Di k3s yang dipakai adalah Traefik bawaan k3s, dengan versi dari k3s.",
-          "en": "On k3s this is the Traefik built into k3s, with the version that comes with k3s."
-        }
+        "On k3s this is the Traefik built into k3s, with the version that comes with k3s."
       ],
       "images": [],
       "version": "k3s v1.36.5+k3s1"
@@ -536,10 +482,7 @@
       "ha": true,
       "known": true,
       "info": "10.0.0.21:6379 (password state/secrets/valkey)",
-      "about": {
-        "id": "Penyimpanan key-value di memori (pengganti Redis yang sepenuhnya open source), untuk cache dan sesi login.",
-        "en": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions."
-      },
+      "about": "An in-memory key-value store (a fully open-source Redis alternative), for cache and login sessions.",
       "web": [],
       "ports": [
         {
@@ -554,10 +497,7 @@
       "health": "valkey-cli ping",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
-          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
-        }
+        "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
       ],
       "images": [
         {
@@ -577,10 +517,7 @@
       "port": 5000,
       "version": "3.1.2",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
-        "en": "A private image registry on every manager. All servers pull images from it."
-      }
+      "about": "A private image registry on every manager. All servers pull images from it."
     },
     {
       "name": "database-proxy",
@@ -588,10 +525,7 @@
       "port": 5432,
       "version": "3.2.26",
       "license": "GPL-2.0",
-      "about": {
-        "id": "HAProxy di depan database ber-HA, selalu menuju server utama (primary).",
-        "en": "HAProxy in front of the HA database, always pointing at the primary."
-      }
+      "about": "HAProxy in front of the HA database, always pointing at the primary."
     },
     {
       "name": "etcd",
@@ -599,10 +533,7 @@
       "port": 12379,
       "version": "v3.6.16",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Penyimpanan kunci-nilai yang dipakai Patroni untuk memilih server utama PostgreSQL.",
-        "en": "The key-value store Patroni uses to elect the PostgreSQL primary."
-      }
+      "about": "The key-value store Patroni uses to elect the PostgreSQL primary."
     },
     {
       "name": "oauth2-proxy",
@@ -610,10 +541,7 @@
       "port": null,
       "version": "v7.15.5",
       "license": "MIT",
-      "about": {
-        "id": "Menghubungkan halaman admin ke login Keycloak, di oauth.<domain>.",
-        "en": "Connects the admin pages to the Keycloak login, at oauth.<domain>."
-      }
+      "about": "Connects the admin pages to the Keycloak login, at oauth.<domain>."
     },
     {
       "name": "sentinel",
@@ -621,10 +549,7 @@
       "port": 26379,
       "version": "",
       "license": "",
-      "about": {
-        "id": "Mengawasi Redis atau Valkey dan memindahkan primary bila server utama mati.",
-        "en": "Watches Redis or Valkey and moves the primary when it goes down."
-      }
+      "about": "Watches Redis or Valkey and moves the primary when it goes down."
     },
     {
       "name": "k3s",
@@ -632,10 +557,7 @@
       "port": 6443,
       "version": "v1.36.5+k3s1",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Kubernetes ringan yang menjalankan aplikasi cluster.",
-        "en": "The small Kubernetes that runs the cluster apps."
-      }
+      "about": "The small Kubernetes that runs the cluster apps."
     }
   ],
   "backup": {

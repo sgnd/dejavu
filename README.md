@@ -11,12 +11,12 @@ You built a system for a client with [ansibro](https://github.com/sgnd/ansibro).
 
 and you get:
 
-- **The BAST** (Berita Acara Serah Terima; in English, the Handover and Acceptance Certificate), ready to print and sign. It has an acceptance checklist, the list of accounts, and the list of delivered files with their fingerprints (SHA-256).
+- **The handover certificate** (Handover and Acceptance Certificate), ready to print and sign. It has an acceptance checklist, the list of accounts, and the list of delivered files with their fingerprints (SHA-256).
 - **The technical documentation**: what was built, every server and app, how to change each password, backup and restore, monitoring and alerts, what to do when something breaks, and who to call.
 - **A laptop guide** for each kind of laptop the client's staff use (Windows, Mac, Linux): how to open the admin pages, log in with SSH, and reach the databases.
 - **One locked file with every password** (a KeePassXC file). The documents themselves never contain a password.
 
-In Indonesian, English, or both. As PDF, to send and sign, and as Markdown, to keep.
+In English. As PDF, to send and sign, and as Markdown, to keep.
 
 See an example: the sample PDFs on the [latest release](https://github.com/sgnd/dejavu/releases/latest) (made from a test system with fake data).
 
@@ -25,7 +25,7 @@ See an example: the sample PDFs on the [latest release](https://github.com/sgnd/
 dejavu is a [skill](#words-used-here): instructions and a small program that your AI agent uses. It does not invent anything:
 
 - **The facts come from ansibro itself**: its settings, its own code and its own list of apps. So the server names, addresses, apps, versions and the backup plan in the documents are the ones that were installed.
-- **What ansibro cannot know, the agent asks you**: the client's name, who signs, the BAST number, how the passwords travel. Your answers go into one file, `handover.yml`.
+- **What ansibro cannot know, the agent asks you**: the client's name, who signs, the certificate number, how the passwords travel. Your answers go into one file, `handover.yml`.
 - **The passwords never reach a document or the agent.** dejavu puts them straight into the locked file. Before anything is saved, it searches every document for every password; if it finds one, it stops.
 
 It uses tools that already exist: [pandoc](https://pandoc.org) and [Typst](https://typst.app) make the PDFs, [d2](https://d2lang.com) draws the diagrams, and [KeePassXC](https://keepassxc.org) makes the locked file.
@@ -57,7 +57,7 @@ It downloads the newest release, checks it, and adds the skill to every AI agent
 ## Use
 
 1. Open your AI agent in the ansibro folder, and ask for the handover documents (see the top of this page).
-2. The agent checks your computer, then asks you some questions: the language, the client, who signs, the BAST number, which laptops the client's staff use, and how you will hand over the passwords. Answer what you know; "I don't know yet" is fine.
+2. The agent checks your computer, then asks you some questions: the client, who signs, the certificate number, which laptops the client's staff use, and how you will hand over the passwords. Answer what you know; "I don't know yet" is fine.
 3. It shows you what it found, for example "the admin pages are open to anyone" or "there is no backup". For each one you decide: fix it now, or write it down as a known issue.
 4. It can run ansibro's own test of every app first. It asks before it does: the test connects to your servers, but changes nothing.
 5. It makes a draft. Read it, correct what is wrong (tell the agent), and it makes the final version.
@@ -70,8 +70,8 @@ When something stops, every message has an id, and [the troubleshooting guide](s
 
 1. **Send the PDFs** by email or a shared folder.
 2. **Give the locked file** (`.kdbx`) on another way: for example on a USB stick, in person.
-3. **Say its passphrase** (7 words) by phone or in person to the person named in the BAST, never in the same message as the file. You read it in your own terminal; the agent tells you the command. The agent never sees it.
-4. **Print the BAST**, go through its acceptance checklist (Annex 1) together with the client, and sign.
+3. **Say its passphrase** (7 words) by phone or in person to the person named in the handover certificate, never in the same message as the file. You read it in your own terminal; the agent tells you the command. The agent never sees it.
+4. **Print the handover certificate**, go through its acceptance checklist (Annex 1) together with the client, and sign.
 5. The client changes every password within the agreed days. The technical documentation says how for each one.
 
 ## Safety
@@ -88,12 +88,12 @@ See [SECURITY.md](SECURITY.md) to report a problem.
 - **AI agent**: an AI assistant that can run commands on your computer for you, like Claude Code, Codex or Gemini CLI.
 - **Skill**: a folder of instructions that teaches an AI agent a task. The agent reads it when the task comes up.
 - **ansibro**: the tool that set up the servers and apps. dejavu reads what it did.
-- **BAST**: Berita Acara Serah Terima, the signed record that a job was handed over and received.
+- **Handover certificate**: the Handover and Acceptance Certificate, the signed record that a job was handed over and received.
 - **Terminal**: the window where you type commands. On a Mac: the Terminal app. On Windows: PowerShell. On Linux: Terminal or a similar app.
 - **SSH**: a safe way to log in to a server from your laptop, with a key file instead of a password.
 - **KeePassXC**: a free program that keeps passwords in one locked file (`.kdbx`). It runs on Windows, Mac and Linux.
 - **Passphrase**: the words that open the locked file.
-- **SHA-256**: a fingerprint of a file. When the fingerprint matches the one in the BAST, the file is exactly the one that was handed over.
+- **SHA-256**: a fingerprint of a file. When the fingerprint matches the one in the handover certificate, the file is exactly the one that was handed over.
 
 ## Details
 
@@ -103,7 +103,7 @@ For developers and the curious. How the code is built, and how to test it: [CONT
 | --- | --- |
 | `skills/dejavu/SKILL.md` | What the agent does, step by step, and what it must never do. |
 | `skills/dejavu/scripts/handover.py` | The program: reads the facts, writes the documents, makes the locked file and the PDFs. |
-| `skills/dejavu/assets/` | The document templates (Indonesian and English), the page layout, and `apps.yml`: what dejavu knows about each ansibro app. |
+| `skills/dejavu/assets/` | The document templates, the page layout, and `apps.yml`: what dejavu knows about each ansibro app. |
 | `skills/dejavu/references/` | The interview questions, and every message with its fix. |
 | `install.sh` | The installer. |
 | `tests/` | The tests: five test systems with fake passwords. |

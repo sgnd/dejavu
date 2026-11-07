@@ -51,7 +51,6 @@ ASSETS = os.path.join(SKILL, "assets")
 TOOLS = {"pandoc": "3.13", "typst": "0.15.1", "d2": "0.9.0"}
 TOOL_MIN = {"pandoc": (3, 1, 2), "typst": (0, 14, 0), "d2": (0, 7, 0)}
 KEEPASSXC_MIN = (2, 7, 6)
-LANGS = ("id", "en")
 OSES = ("windows", "macos", "linux")
 MIN_SECRET = 6  # shorter values cannot be searched for safely
 WARNED_WEAK = set()  # weak-secret is said once per run, not once per leak check
@@ -595,7 +594,7 @@ def build_facts(ab, args, data):
             "data": [f"/opt/ansibro/{d}" for d in (info or {}).get("data", [name])],
             "backup": (info or {}).get("backup", "paused") if backup_cfg else "none",
             "health": (info or {}).get("health", ""), "laptop": (info or {}).get("laptop", "none"),
-            "notes": [{"id": n["id"], "en": n["en"]} for n in (info or {}).get("notes", [])
+            "notes": [n["text"] for n in (info or {}).get("notes", [])
                       if not n.get("when") or matches(n["when"], f)], "images": app_images,
             "version": app_images[0]["tag"] if app_images else "",
         })
@@ -868,13 +867,14 @@ def read_cert(path):
 # ---------- answers (handover.yml) ----------------------------------------------------
 
 ANSWER_KEYS = {
-    "lang", "environment", "slug", "document", "bast", "client", "vendor", "servers", "dns", "people",
+    "environment", "slug", "document", "certificate", "client", "vendor", "servers", "dns", "people",
     "ssh_handover", "state_owner", "password_change_days", "vendor_access_end", "delivery", "support",
     "tls", "font", "known_issues", "out_of_scope", "extra_apps", "notes", "summary_note", "attach",
     "restore_drill", "provider",
 }
 REQUIRED_FINAL = [
-    ("bast", "number"), ("bast", "date"), ("bast", "place"), ("client", "name"), ("client", "signer", "name"),
+    ("certificate", "number"), ("certificate", "date"), ("certificate", "place"), ("client", "name"),
+    ("client", "signer", "name"),
     ("client", "signer", "title"), ("vendor", "name"), ("vendor", "signer", "name"), ("vendor", "signer", "title"),
     ("delivery", "kdbx_channel"), ("delivery", "passphrase_channel"), ("delivery", "recipient"),
 ]
@@ -899,17 +899,12 @@ def load_answers(out):
     if not isinstance(a, dict):
         failed("answers", "handover.yml must be a list of settings (key: value), as in handover.example.yml",
                code=2)
+    a = upgrade_answers(a)
     unknown = sorted(set(a) - ANSWER_KEYS)
     if not unknown:
         a = with_defaults(a)
     if unknown:
         failed("answers", f"handover.yml has unknown settings: {', '.join(unknown)} (typo?)", code=2)
-    langs = a.get("lang") or ["id"]
-    langs = [langs] if isinstance(langs, str) else list(langs)
-    bad = [x for x in langs if x not in LANGS]
-    if bad:
-        failed("answers", f"lang must be id, en or [id, en], got {bad}", code=2)
-    a["lang"] = langs
     people = a.get("people") or []
     if not isinstance(people, list):
         failed("answers", "people must be a list, one item per person (name:, os:, persona:)", code=2)
@@ -924,10 +919,30 @@ def load_answers(out):
         failed("answers", "ssh_handover must be client_key or generated", code=2)
     if a.get("state_owner", "vendor") not in ("vendor", "client"):
         failed("answers", "state_owner must be vendor or client", code=2)
-    if dig(a, "bast", "stage") not in (None, "single", "pho", "fho"):
-        failed("answers", "bast.stage must be single, pho or fho", code=2)
-    if dig(a, "bast", "first_party") not in (None, "vendor", "client"):
-        failed("answers", "bast.first_party must be vendor or client", code=2)
+    if dig(a, "certificate", "stage") not in (None, "single", "pho", "fho"):
+        failed("answers", "certificate.stage must be single, pho or fho", code=2)
+    if dig(a, "certificate", "first_party") not in (None, "vendor", "client"):
+        failed("answers", "certificate.first_party must be vendor or client", code=2)
+    return a
+
+
+def upgrade_answers(a):
+    """A handover.yml from dejavu 1.1 or older still works: its old settings are read the new way."""
+    lang = a.pop("lang", None)
+    if lang not in (None, "en", ["en"]):
+        warning("lang", "the documents are in English only now; lang in handover.yml is ignored (remove it)")
+    old = a.pop("bast", None)
+    if isinstance(old, dict) and "certificate" in a:
+        warning("answers-renamed", "handover.yml has both bast: (the old name) and certificate:; bast: is ignored "
+                "(remove it)")
+    elif isinstance(old, dict):
+        old = dict(old)
+        old.pop("meterai", None)
+        if "mengetahui" in old:
+            old["acknowledged_by"] = old.pop("mengetahui")
+        a["certificate"] = old
+        warning("answers-renamed", "handover.yml uses the old name bast: for the handover certificate; it is read "
+                "as certificate: (rename it, and mengetahui: to acknowledged_by:)")
     return a
 
 
@@ -955,55 +970,28 @@ def slug_of(a, facts):
     return slugify(base)
 
 
-# ---------- language helpers ----------------------------------------------------------
+# ---------- words and dates ----------------------------------------------------------
 
-DAYS = {"id": ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"],
-        "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]}
-MONTHS = {"id": ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September",
-                 "Oktober", "November", "Desember"],
-          "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September",
-                 "October", "November", "December"]}
-ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"]
-ONES_ID = ["nol", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"]
-ONES_EN = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
-           "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
-TENS_EN = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December"]
+ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+        "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
 
 
-def terbilang(n):
-    """A number in Indonesian words, 0 to 9999: 2026 -> dua ribu dua puluh enam."""
-    n = int(n)
-    if n < 12:
-        return ONES_ID[n]
-    if n < 20:
-        return f"{ONES_ID[n - 10]} belas"
-    if n < 100:
-        rest = n % 10
-        return f"{ONES_ID[n // 10]} puluh" + (f" {ONES_ID[rest]}" if rest else "")
-    if n < 200:
-        return "seratus" + (f" {terbilang(n - 100)}" if n > 100 else "")
-    if n < 1000:
-        rest = n % 100
-        return f"{ONES_ID[n // 100]} ratus" + (f" {terbilang(rest)}" if rest else "")
-    if n < 2000:
-        return "seribu" + (f" {terbilang(n - 1000)}" if n > 1000 else "")
-    if n < 10000:
-        rest = n % 1000
-        return f"{ONES_ID[n // 1000]} ribu" + (f" {terbilang(rest)}" if rest else "")
-    raise ValueError("terbilang: up to 9999")
-
-
-def words_en(n):
+def words(n):
+    """A number in words, 0 to 9999: 21 -> twenty-one."""
     n = int(n)
     if n < 20:
-        return ONES_EN[n]
+        return ONES[n]
     if n < 100:
-        return TENS_EN[n // 10] + (f"-{ONES_EN[n % 10]}" if n % 10 else "")
+        return TENS[n // 10] + (f"-{ONES[n % 10]}" if n % 10 else "")
     if n < 1000:
-        return f"{ONES_EN[n // 100]} hundred" + (f" and {words_en(n % 100)}" if n % 100 else "")
+        return f"{ONES[n // 100]} hundred" + (f" and {words(n % 100)}" if n % 100 else "")
     if n < 10000:
-        return f"{words_en(n // 1000)} thousand" + (f" {words_en(n % 1000)}" if n % 1000 else "")
-    raise ValueError("words_en: up to 9999")
+        return f"{words(n // 1000)} thousand" + (f" {words(n % 1000)}" if n % 1000 else "")
+    raise ValueError("words: up to 9999")
 
 
 def as_date(value):
@@ -1012,27 +1000,12 @@ def as_date(value):
     return datetime.date.fromisoformat(str(value))
 
 
-def date_long(value, lang):
-    """4 November 2026 (id) / Wednesday, 4 November 2026 (en)."""
+def date_long(value):
+    """Wednesday, 4 November 2026."""
     if value in (None, ""):
         return None
     d = as_date(value)
-    text = f"{d.day} {MONTHS[lang][d.month - 1]} {d.year}"
-    return text if lang == "id" else f"{DAYS['en'][d.weekday()]}, {text}"
-
-
-def date_words(value, lang):
-    """The BAST opening: Rabu, tanggal empat bulan November tahun dua ribu dua puluh enam."""
-    d = as_date(value)
-    if lang == "id":
-        return (f"{DAYS['id'][d.weekday()]}, tanggal {terbilang(d.day)} bulan {MONTHS['id'][d.month - 1]} "
-                f"tahun {terbilang(d.year)}")
-    return f"{DAYS['en'][d.weekday()]}, {d.day} {MONTHS['en'][d.month - 1]} {d.year}"
-
-
-def number(n, lang):
-    s = f"{n:,}"
-    return s.replace(",", ".") if lang == "id" else s
+    return f"{DAYS[d.weekday()]}, {d.day} {MONTHS[d.month - 1]} {d.year}"
 
 
 def md_escape(text):
@@ -1044,7 +1017,7 @@ def md_escape(text):
 
 # ---------- rendering -----------------------------------------------------------------
 
-def jinja_env(lang):
+def jinja_env():
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(ASSETS), undefined=jinja2.StrictUndefined,
                              keep_trailing_newline=True, trim_blocks=True, lstrip_blocks=True,
                              autoescape=False,
@@ -1052,14 +1025,11 @@ def jinja_env(lang):
                              comment_start_string="{##", comment_end_string="##}")
     env.filters.update({
         "md": md_escape,
-        "t": lambda v: (v.get(lang) if isinstance(v, dict) else v),
-        "date": lambda v: date_long(v, lang),
+        "date": date_long,
         "iso": lambda v: as_date(v).isoformat() if v else "",
-        "num": lambda v: number(v, lang),
-        "words": lambda v: terbilang(v) if lang == "id" else words_en(v),
-        "datewords": lambda v: date_words(v, lang),
-        "roman": lambda v: ROMAN[as_date(v).month - 1],
-        # A date some days later: {{ a.bast.date | adddays(7) | date }}
+        "num": lambda v: f"{v:,}",
+        "words": words,
+        # A date some days later: {{ a.certificate.date | adddays(7) | date }}
         "adddays": lambda v, n: (as_date(v) + datetime.timedelta(days=int(n))).isoformat() if v else None,
         "cidrs": lambda v: ", ".join(v) if v else "",
         "yaml": lambda v: yaml.safe_dump(v, allow_unicode=True, sort_keys=False).strip(),
@@ -1086,7 +1056,7 @@ def contains_ip(cidrs, ip):
     return False
 
 
-def context(facts, a, lang, slug, extra):
+def context(facts, a, slug, extra):
     """What every template sees: f (facts), a (answers), and ready-made pieces."""
     oses = sorted({p["os"] for p in a.get("people") or [] if p.get("os")}, key=OSES.index) or list(OSES)
     servers = a.get("servers") or {}
@@ -1110,15 +1080,15 @@ def context(facts, a, lang, slug, extra):
             if not contains_ip(facts["admin_allow_from"], host_ip) or not contains_ip(facts["ssh"]["allow_from"], host_ip):
                 blocked.append({"name": p.get("name"), "ip": ip})
     return {
-        "f": facts, "a": a, "lang": lang, "slug": slug, "oses": oses, "reach": reach, "web": web,
+        "f": facts, "a": a, "slug": slug, "oses": oses, "reach": reach, "web": web,
         "app": {x["name"]: x for x in facts["apps"]}, "people": people, "blocked": blocked,
         "groups": extra["groups"], "today": today().isoformat(), "dejavu": facts["dejavu"],
         "files": extra.get("files", []), "check": extra.get("check"), "draft": extra.get("draft", False),
-        "kdbx": extra.get("kdbx"), "lang_both": len(a["lang"]) > 1, "first_lang": a["lang"][0],
+        "kdbx": extra.get("kdbx"),
         "nodes": {n["name"]: n for n in facts["nodes"]},
         "has": lambda name: name in {x["name"] for x in facts["apps"]},
         "warn": {w["id"] for w in facts["warnings"]},
-        "secret_groups": group_secrets(facts, extra["groups"], lang),
+        "secret_groups": group_secrets(facts, extra["groups"]),
         "logo": {who: logo_name(who, dig(a, who, "logo")) for who in ("vendor", "client")},
     }
 
@@ -1130,11 +1100,11 @@ def logo_name(who, path):
     return f"logo-{who}{os.path.splitext(str(path))[1].lower() or '.png'}"
 
 
-def group_secrets(facts, groups, lang):
+def group_secrets(facts, groups):
     out = []
     for key, title in groups.items():
         rows = [s for s in facts["secrets"] if s["group"] == key]
-        out.append({"key": key, "title": title[lang], "rows": rows})
+        out.append({"key": key, "title": title, "rows": rows})
     return out
 
 
@@ -1407,18 +1377,14 @@ class Vault:
 
 
 CHANGE_NOTE = {
-    "file": {"id": "Ubah file state/secrets/{name}, jalankan ./install.sh, lalu perbarui file ini.",
-             "en": "Edit state/secrets/{name}, run ./install.sh, then update this file."},
-    "both": {"id": "Ubah di aplikasi dan di state/secrets/{name} bersamaan, lalu ./install.sh dan tests/check.py.",
-             "en": "Change it in the app and in state/secrets/{name} together, then ./install.sh and tests/check.py."},
-    "app": {"id": "Ubah di aplikasi, lalu salin nilai baru ke state/secrets/{name} dan ke file ini.",
-            "en": "Change it in the app, then copy the new value into state/secrets/{name} and this file."},
-    "internal": {"id": "Jangan diubah kecuali bocor; ini urusan operator ansibro.",
-                 "en": "Do not change it unless it leaked; the ansibro operator handles it."},
+    "file": "Edit state/secrets/{name}, run ./install.sh, then update this file.",
+    "both": "Change it in the app and in state/secrets/{name} together, then ./install.sh and tests/check.py.",
+    "app": "Change it in the app, then copy the new value into state/secrets/{name} and this file.",
+    "internal": "Do not change it unless it leaked; the ansibro operator handles it.",
 }
 
 
-def build_vault(ab, cli, path, phrase, facts, a, data, lang, attachments):
+def build_vault(ab, cli, path, phrase, facts, a, data, attachments):
     """Make the credentials file from scratch, then read it back to prove it is right."""
     values = ab.secret_values()
     groups = data["groups"]
@@ -1438,9 +1404,9 @@ def build_vault(ab, cli, path, phrase, facts, a, data, lang, attachments):
             user = e.get("user_prefix", "") + values.get(e["user_secret"], "")
         url = (e.get("url", "") if e else "").replace("{domain}", facts["domain"]) \
             .replace("{ip}", primary_ip.get(s["app"], ""))
-        note = CHANGE_NOTE[s["change"]][lang].format(name=name)
+        note = CHANGE_NOTE[s["change"]].format(name=name)
         if not s["verified"]:
-            note += " (belum diuji)" if lang == "id" else " (not tested)"
+            note += " (not tested)"
         value = values[name]
         multi = "\n" in value
         items.append((s["group"], e["title"] if e else name, user.replace("{domain}", facts["domain"]), url,
@@ -1456,10 +1422,10 @@ def build_vault(ab, cli, path, phrase, facts, a, data, lang, attachments):
     v.create()
     for key in groups:  # only the groups that hold something, in their order
         if any(i[0] == key for i in items):
-            v.mkdir(groups[key][lang])
+            v.mkdir(groups[key])
     expect = {}
     for group, title, user, url, notes, value, att_name, blob in items:
-        entry = f"{groups[group][lang]}/{title}"
+        entry = f"{groups[group]}/{title}"
         v.add(entry, user, url, notes, value)
         if att_name:
             v.attach(entry, att_name, blob)
@@ -1764,10 +1730,9 @@ def read_check(out, facts):
             "skipped": sum(r["result"] == "SKIP" for r in rows)}
 
 
-FILES = {
-    "id": {"bast": "BAST", "technical": "dokumentasi-teknis", "laptop": "panduan-laptop"},
-    "en": {"bast": "handover-certificate", "technical": "technical-documentation", "laptop": "laptop-guide"},
-}
+FILES = {"certificate": "handover-certificate", "technical": "technical-documentation", "laptop": "laptop-guide"}
+# The output of dejavu 1.1 and older: a folder per language, and the Indonesian credentials file name.
+OLD_LAYOUT = ("en", "id")
 
 
 def render(env, template, ctx, path):
@@ -1782,7 +1747,7 @@ def render(env, template, ctx, path):
     return path
 
 
-def pdf(tools, build, md, pdf_path, lang, toc, date):
+def pdf(tools, build, md, pdf_path, toc, date):
     """Markdown -> Typst (pandoc, our template) -> PDF/A-2b (typst)."""
     typ = os.path.splitext(md)[0] + ".typ"
     cmd = tools["pandoc"] + [md, "-f", "markdown", "-t", "typst", "-s", "--template",
@@ -1833,6 +1798,16 @@ def cmd_build(ab, args, data):
                        "or build with --force to overwrite it.")
     for d in (dist, build):
         os.makedirs(d, mode=0o700, exist_ok=True)
+    # dejavu 1.1 and older wrote a folder per language: the documents are now in dist/ itself.
+    old = [os.path.join(top, x) for top in (dist, build) for x in OLD_LAYOUT if os.path.isdir(os.path.join(top, x))]
+    for p in old:
+        shutil.rmtree(p)
+    old_kdbx = os.path.join(dist, f"{slug}-kredensial.kdbx")
+    if os.path.isfile(old_kdbx):
+        os.remove(old_kdbx)
+        old.append(old_kdbx)
+    if old:
+        ok(f"removed the output of an older dejavu: {', '.join(os.path.relpath(p, out) for p in old)}")
     fresh = []
 
     check = read_check(out, facts)
@@ -1847,15 +1822,15 @@ def cmd_build(ab, args, data):
             tools[name] = t
 
     # 1. Plain files: ssh_config, hosts, diagrams, the CA.
-    base_ctx = context(facts, a, a["lang"][0], slug, {"groups": groups, "check": check, "draft": draft})
-    env0 = jinja_env(a["lang"][0])
+    ctx = context(facts, a, slug, {"groups": groups, "check": check, "draft": draft})
+    env = jinja_env()
     for tpl, name in (("ssh_config.txt.j2", "ssh_config.txt"), ("hosts.txt.j2", "hosts.txt")):
         p = os.path.join(dist, name)
         if name == "hosts.txt" and dig(a, "dns", "mode") != "hosts":
             if os.path.exists(p):
                 os.remove(p)
             continue
-        fresh.append(render(env0, tpl, base_ctx, p))
+        fresh.append(render(env, tpl, ctx, p))
     if ca_file or dig(a, "tls", "client_ca"):
         src = dig(a, "tls", "client_ca") or ca_file
         dst = os.path.join(dist, f"{slug}-ca.crt")
@@ -1869,25 +1844,19 @@ def cmd_build(ab, args, data):
             fh.write(ssh_key[1] + "\n")
         fresh.append(pub)
 
-    # 2. The documents, except the BAST (it lists the hashes of the others).
+    # 2. The documents, except the handover certificate (it lists the hashes of the others).
     docs = []
-    for lang in a["lang"]:
-        env = jinja_env(lang)
-        ctx = context(facts, a, lang, slug, {"groups": groups, "check": check, "draft": draft})
-        ldist, lbuild = os.path.join(dist, lang), os.path.join(build, lang)
-        os.makedirs(ldist, mode=0o700, exist_ok=True)
-        os.makedirs(lbuild, mode=0o700, exist_ok=True)
-        for diagram in ("architecture", "access"):
-            fresh.append(render(env, f"{diagram}.d2.j2", ctx, os.path.join(lbuild, f"{diagram}.d2")))
-        p = os.path.join(ldist, f"{slug}-{FILES[lang]['technical']}.md")
-        fresh.append(render(env, f"{lang}/technical.md.j2", {**ctx, "only_os": None}, p))
-        docs.append((lang, p, True))
-        for os_name in ctx["oses"]:
-            p = os.path.join(ldist, f"{slug}-{FILES[lang]['laptop']}-{os_name}.md")
-            fresh.append(render(env, f"{lang}/laptop-guide.md.j2", {**ctx, "only_os": os_name}, p))
-            docs.append((lang, p, True))
+    for diagram in ("architecture", "access"):
+        fresh.append(render(env, f"{diagram}.d2.j2", ctx, os.path.join(build, f"{diagram}.d2")))
+    p = os.path.join(dist, f"{slug}-{FILES['technical']}.md")
+    fresh.append(render(env, "technical.md.j2", {**ctx, "only_os": None}, p))
+    docs.append(p)
+    for os_name in ctx["oses"]:
+        p = os.path.join(dist, f"{slug}-{FILES['laptop']}-{os_name}.md")
+        fresh.append(render(env, "laptop-guide.md.j2", {**ctx, "only_os": os_name}, p))
+        docs.append(p)
     leak_gate(ab, out, slug, fresh)
-    ok(f"documents written for {', '.join(a['lang'])}; no secret in them")
+    ok("documents written; no secret in them")
 
     # 3. The credentials file.
     kdbx = None
@@ -1904,7 +1873,7 @@ def cmd_build(ab, args, data):
             phrase = make_passphrase(cli)
             ab.write_passphrase(slug, phrase)
             ok("made a new passphrase; it is kept in state/handover/ (show it with: passphrase)")
-        kname = f"{slug}-{'kredensial' if a['lang'][0] == 'id' else 'credentials'}.kdbx"
+        kname = f"{slug}-credentials.kdbx"
         kdbx = os.path.join(dist, kname)
         stamp = os.path.join(build, "vault.json")
         # The values too (a changed password makes a new file), keyed with the passphrase so the
@@ -1912,7 +1881,7 @@ def cmd_build(ab, args, data):
         values = {**ab.secret_values(), **config_secret_values(ab)}
         values_mac = hmac.new(phrase.encode(), json.dumps(sorted(values.items())).encode(), hashlib.sha256).hexdigest()
         attached = [sha256(os.path.expanduser(x)) for x in a.get("attach") or []]
-        want = hashlib.sha256(json.dumps([facts["secrets"], facts["config_secrets"], a["lang"][0],
+        want = hashlib.sha256(json.dumps([facts["secrets"], facts["config_secrets"], groups,
                                           a.get("ssh_handover"), a.get("attach"), values_mac, attached,
                                           ssh_key[1] if ssh_key else None],
                                          sort_keys=True).encode()).hexdigest()
@@ -1925,58 +1894,51 @@ def cmd_build(ab, args, data):
                     attachments.append((os.path.basename(extra), "infra", os.path.basename(extra), fh.read()))
             if ssh_key:
                 attachments.append(("SSH key (client)", "infra", f"{slug}_ed25519", (ssh_key[0] + "\n").encode()))
-            build_vault(ab, cli, kdbx, phrase, facts, a, data, a["lang"][0], attachments)
+            build_vault(ab, cli, kdbx, phrase, facts, a, data, attachments)
             write_json(stamp, {"want": want, "sha256": sha256(kdbx)})
         else:
             ok("credentials file is up to date")
     leak_gate(ab, out, slug, fresh)
 
-    # 4. PDFs, then the BAST with the hashes of everything else.
+    # 4. PDFs, then the handover certificate with the hashes of everything else.
+    doc_date = dig(a, "certificate", "date") or today()
     if tools:
         for diagram in ("architecture", "access"):
-            for lang in a["lang"]:
-                d2 = os.path.join(build, lang, f"{diagram}.d2")
-                svg = os.path.join(build, lang, f"{diagram}.svg")
-                r = run(tools["d2"] + ["--layout=elk", "--pad", "20", d2, svg])
-                if r.returncode != 0:
-                    failed("d2", r.stderr.strip()[-400:])
-                shutil.copyfile(svg, os.path.join(dist, lang, f"{diagram}.svg"))
-        for lang in a["lang"]:
-            shutil.copyfile(os.path.join(ASSETS, "handover.typst"), os.path.join(build, lang, "handover.typst"))
-            for who in ("vendor", "client"):
-                src = dig(a, who, "logo")
-                if not src:
-                    continue
-                src = os.path.expanduser(str(src))
-                shutil.copyfile(src, os.path.join(build, lang, logo_name(who, src)))
-        for lang, md, toc in docs:
-            b = shutil.copy(md, os.path.join(build, lang))
-            typ = pdf(tools, os.path.join(build, lang), b, os.path.splitext(md)[0] + ".pdf", lang, toc,
-                      dig(a, "bast", "date") or today())
-            fresh.append(typ)
+            d2 = os.path.join(build, f"{diagram}.d2")
+            svg = os.path.join(build, f"{diagram}.svg")
+            r = run(tools["d2"] + ["--layout=elk", "--pad", "20", d2, svg])
+            if r.returncode != 0:
+                failed("d2", r.stderr.strip()[-400:])
+            shutil.copyfile(svg, os.path.join(dist, f"{diagram}.svg"))
+        shutil.copyfile(os.path.join(ASSETS, "handover.typst"), os.path.join(build, "handover.typst"))
+        for who in ("vendor", "client"):
+            src = dig(a, who, "logo")
+            if not src:
+                continue
+            src = os.path.expanduser(str(src))
+            shutil.copyfile(src, os.path.join(build, logo_name(who, src)))
+        for md in docs:
+            b = shutil.copy(md, build)
+            fresh.append(pdf(tools, build, b, os.path.splitext(md)[0] + ".pdf", True, doc_date))
         leak_gate(ab, out, slug, fresh)
     files = []
     for p in sorted(walk(dist)):
         rel = os.path.relpath(p, dist)
-        if os.path.basename(p) in ("SHA256SUMS",) or os.path.basename(rel).startswith(tuple(
-                f"{slug}-{FILES[x]['bast']}" for x in LANGS)):
+        if rel == "SHA256SUMS" or rel.startswith(f"{slug}-{FILES['certificate']}"):
             continue
         if p.endswith((".pdf", ".kdbx", ".crt", ".txt", ".pub")) and "README" not in p:
             files.append({"name": rel, "size": os.path.getsize(p), "sha256": sha256(p)})
-    for lang in a["lang"]:
-        env = jinja_env(lang)
-        ctx = context(facts, a, lang, slug, {"groups": groups, "check": check, "draft": draft, "files": files,
-                                             "kdbx": {"name": os.path.basename(kdbx), "sha256": sha256(kdbx),
-                                                      "size": os.path.getsize(kdbx)} if kdbx else None})
-        p = os.path.join(dist, lang, f"{slug}-{FILES[lang]['bast']}.md")
-        fresh.append(render(env, f"{lang}/bast.md.j2", ctx, p))
-        # The README lists the files, so it comes last too.
-        fresh.append(render(env, f"{lang}/readme.txt.j2", ctx, os.path.join(dist, lang, "README.txt")))
-        leak_gate(ab, out, slug, fresh)
-        if tools:
-            b = shutil.copy(p, os.path.join(build, lang))
-            fresh.append(pdf(tools, os.path.join(build, lang), b, os.path.splitext(p)[0] + ".pdf", lang, False,
-                             dig(a, "bast", "date") or today()))
+    ctx = context(facts, a, slug, {"groups": groups, "check": check, "draft": draft, "files": files,
+                                   "kdbx": {"name": os.path.basename(kdbx), "sha256": sha256(kdbx),
+                                            "size": os.path.getsize(kdbx)} if kdbx else None})
+    p = os.path.join(dist, f"{slug}-{FILES['certificate']}.md")
+    fresh.append(render(env, "certificate.md.j2", ctx, p))
+    # The README lists the files, so it comes last too.
+    fresh.append(render(env, "readme.txt.j2", ctx, os.path.join(dist, "README.txt")))
+    leak_gate(ab, out, slug, fresh)
+    if tools:
+        b = shutil.copy(p, build)
+        fresh.append(pdf(tools, build, b, os.path.splitext(p)[0] + ".pdf", False, doc_date))
     leak_gate(ab, out, slug, fresh)
 
     # 5. SHA256SUMS over everything handed over, and what was written (to spot hand edits).

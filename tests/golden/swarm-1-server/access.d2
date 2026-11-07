@@ -1,0 +1,9 @@
+# How a laptop reaches northwind.example.com, made by dejavu 1.1.0.
+direction: right
+laptop: "Your laptop" {shape: person}
+web: "Web pages\nhttps://*.northwind.example.com"
+laptop -> web: "HTTPS 443\nlisted IPs only"
+ssh: "SSH server1\n203.0.113.10:22"
+laptop -> ssh: "SSH key\nlisted IPs only"
+private: "Private services\nPostgreSQL, Redis, S3" {shape: cylinder}
+ssh -> private: "SSH tunnel"

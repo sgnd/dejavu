@@ -1,77 +1,77 @@
-# SSH settings for PT Maju Bersama (nusa.example.co.id), made by dejavu 1.1.0.
+# SSH settings for Northwind Logistics Ltd (northwind.example.org), made by dejavu 1.1.0.
 # Add these lines to ~/.ssh/config (Windows: %USERPROFILE%\.ssh\config).
 # The key file is your own key (or the one from the credentials file), never the vendor's.
 
-Host maju-data1
+Host northwind-data1
   HostName 203.0.113.21
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-data2
+Host northwind-data2
   HostName 203.0.113.22
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-data3
+Host northwind-data3
   HostName 203.0.113.23
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-manager1
+Host northwind-manager1
   HostName 203.0.113.11
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-manager2
+Host northwind-manager2
   HostName 203.0.113.12
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-manager3
+Host northwind-manager3
   HostName 203.0.113.13
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-worker1
+Host northwind-worker1
   HostName 203.0.113.31
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-worker2
+Host northwind-worker2
   HostName 203.0.113.32
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-Host maju-worker3
+Host northwind-worker3
   HostName 203.0.113.33
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
 
-# A private pipe to the databases and other services: run "ssh -N maju-tunnel" and keep it open.
+# A private pipe to the databases and other services: run "ssh -N northwind-tunnel" and keep it open.
 # Then connect to 127.0.0.1 and the local port below.
-Host maju-tunnel
+Host northwind-tunnel
   HostName 203.0.113.21
   User ubuntu
   Port 22
-  IdentityFile ~/.ssh/maju_ed25519
+  IdentityFile ~/.ssh/northwind_ed25519
   IdentitiesOnly yes
   ExitOnForwardFailure yes
   # S3 on data1

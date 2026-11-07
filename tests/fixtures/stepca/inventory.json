@@ -441,7 +441,7 @@
     "traefik",
     "swarmpit"
    ],
-   "timezone": "Asia/Jakarta",
+   "timezone": "Europe/London",
    "tls": "letsencrypt",
    "wireguard": false,
    "wireguard_port": 51820

@@ -3,6 +3,8 @@
     python3 -m unittest discover -s tests -p 'test_*.py'
 """
 
+import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -14,28 +16,19 @@ import handover as h  # noqa: E402
 
 
 class Words(unittest.TestCase):
-    def test_terbilang(self):
-        for n, want in ((1, "satu"), (11, "sebelas"), (12, "dua belas"), (20, "dua puluh"), (21, "dua puluh satu"),
-                        (100, "seratus"), (111, "seratus sebelas"), (1000, "seribu"),
-                        (2026, "dua ribu dua puluh enam"), (9999, "sembilan ribu sembilan ratus sembilan puluh sembilan")):
-            self.assertEqual(h.terbilang(n), want)
-
-    def test_words_en(self):
-        self.assertEqual(h.words_en(2), "two")
-        self.assertEqual(h.words_en(21), "twenty-one")
-        self.assertEqual(h.words_en(2026), "two thousand twenty-six")
+    def test_words(self):
+        self.assertEqual(h.words(2), "two")
+        self.assertEqual(h.words(21), "twenty-one")
+        self.assertEqual(h.words(111), "one hundred and eleven")
+        self.assertEqual(h.words(2026), "two thousand twenty-six")
 
     def test_dates(self):
-        self.assertEqual(h.date_long("2026-11-04", "id"), "4 November 2026")
-        self.assertEqual(h.date_long("2026-11-04", "en"), "Wednesday, 4 November 2026")
-        self.assertEqual(h.date_words("2026-11-04", "id"),
-                         "Rabu, tanggal empat bulan November tahun dua ribu dua puluh enam")
-        self.assertEqual([h.jinja_env("id").filters["roman"](f"2026-{m:02d}-01") for m in (1, 4, 9, 12)],
-                         ["I", "IV", "IX", "XII"])
+        self.assertEqual(h.date_long("2026-11-04"), "Wednesday, 4 November 2026")
+        self.assertIsNone(h.date_long(None))
+        self.assertEqual(h.jinja_env().filters["adddays"]("2026-11-04", 30), "2026-12-04")
 
     def test_numbers(self):
-        self.assertEqual(h.number(1234567, "id"), "1.234.567")
-        self.assertEqual(h.number(1234567, "en"), "1,234,567")
+        self.assertEqual(h.jinja_env().filters["num"](1234567), "1,234,567")
 
 
 class Text(unittest.TestCase):
@@ -44,11 +37,11 @@ class Text(unittest.TestCase):
         self.assertEqual(h.md_escape(None), "")
 
     def test_slug(self):
-        self.assertEqual(h.slugify("PT Maju Bersama!"), "pt-maju-bersama")
+        self.assertEqual(h.slugify("Northwind Logistics Ltd!"), "northwind-logistics-ltd")
         self.assertEqual(h.slugify("***"), "client")
 
     def test_q_is_valid_yaml(self):
-        q = h.jinja_env("en").filters["q"]
+        q = h.jinja_env().filters["q"]
         import yaml
         for text in ('He said "hi": yes', "a: b # c", "- list", None):
             self.assertEqual(yaml.safe_load(f"k: {q(text)}")["k"], "" if text is None else text)
@@ -138,12 +131,13 @@ class Facts(unittest.TestCase):
         self.assertFalse(h.contains_ip(["198.51.100.0/24"], "not-an-ip"))
 
     def test_apps_yml_is_complete(self):
-        """Every app and secret text has both languages; every entry names a known secret."""
+        """Every app has its texts; every entry names a known secret."""
         data = h.load_yaml(os.path.join(h.ASSETS, "apps.yml"))
         for name, app in data["apps"].items():
-            self.assertEqual(set(app["about"]), {"id", "en"}, name)
+            self.assertIsInstance(app["about"], str, name)
             for note in app["notes"]:
-                self.assertEqual(set(note) - {"when"}, {"id", "en"}, name)
+                self.assertEqual(set(note) - {"when"}, {"text"}, name)
+                self.assertIsInstance(note["text"], str, name)
             for w in app["web"]:
                 self.assertIn(w["guard"], ("admin", "admin-ip", "public"), name)
                 self.assertIn(w["login"], ("own", "layer", "none"), name)
@@ -154,7 +148,9 @@ class Facts(unittest.TestCase):
             self.assertIn(e["secret"], data["secrets"])
             self.assertIn(e["group"], data["groups"])
         for c in data["components"].values():
-            self.assertEqual(set(c["about"]), {"id", "en"})
+            self.assertIsInstance(c["about"], str)
+        for title in data["groups"].values():
+            self.assertIsInstance(title, str)
 
 
 class LeakGate(unittest.TestCase):
@@ -186,22 +182,32 @@ class Answers(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with open(os.path.join(tmp, "handover.yml"), "w", encoding="utf-8") as f:
                 f.write(text)
-            return h.load_answers(tmp)
+            self.said = io.StringIO()
+            with contextlib.redirect_stdout(self.said):
+                return h.load_answers(tmp)
 
     def test_unknown_key_is_an_error(self):
         with self.assertRaises(h.Stop) as e:
-            self.answers("lang: id\nclinet: {name: x}\n")
+            self.answers("clinet: {name: x}\n")
         self.assertEqual(e.exception.code, 2)
 
-    def test_lang(self):
-        self.assertEqual(self.answers("lang: en\n")["lang"], ["en"])
-        self.assertEqual(self.answers("lang: [id, en]\n")["lang"], ["id", "en"])
-        with self.assertRaises(h.Stop):
-            self.answers("lang: fr\n")
+    def test_answers_of_dejavu_1_1_still_work(self):
+        """The old lang: is ignored, and the old bast: section is read as certificate:."""
+        a = self.answers("lang: [id, en]\nbast: {number: HC-1, mengetahui: [{name: Ann}], meterai: {enabled: true}}\n")
+        self.assertNotIn("lang", a)
+        self.assertNotIn("bast", a)
+        self.assertEqual(a["certificate"]["number"], "HC-1")
+        self.assertEqual(a["certificate"]["acknowledged_by"], [{"name": "Ann"}])
+        self.assertNotIn("meterai", a["certificate"])
+        self.assertNotIn("mengetahui", a["certificate"])
+        self.assertIn("warning [lang]", self.said.getvalue())
+        self.assertIn("warning [answers-renamed]", self.said.getvalue())
+        self.answers("lang: en\ncertificate: {number: HC-1}\n")  # already English, already renamed: nothing to say
+        self.assertEqual(self.said.getvalue(), "")
 
     def test_required(self):
-        missing = h.missing_required(self.answers("lang: id\nclient: {name: X}\n"))
-        self.assertIn("bast.number", missing)
+        missing = h.missing_required(self.answers("client: {name: X}\n"))
+        self.assertIn("certificate.number", missing)
         self.assertNotIn("client.name", missing)
 
     def test_bad_yaml_is_an_answers_error(self):
@@ -213,7 +219,8 @@ class Answers(unittest.TestCase):
     def test_example_is_valid(self):
         with open(os.path.join(h.ASSETS, "handover.example.yml"), encoding="utf-8") as f:
             a = self.answers(f.read().replace("  # SERVERS", "  server1: {public_ip: null}"))
-        self.assertEqual(a["lang"], ["id"])
+        self.assertEqual(a["certificate"]["first_party"], "vendor")
+        self.assertEqual(self.said.getvalue(), "")
 
 
 class Doctor(unittest.TestCase):

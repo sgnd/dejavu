@@ -9,12 +9,12 @@
   "last_install": "2026-11-03",
   "state": "plain",
   "orchestrator": "swarm",
-  "domain": "maju.example.id",
+  "domain": "northwind.example.com",
   "tls": "letsencrypt",
-  "acme_email": "it@maju.example.id",
+  "acme_email": "it@northwind.example.com",
   "acme_server": null,
   "ca_file": false,
-  "timezone": "Asia/Jakarta",
+  "timezone": "Europe/London",
   "offline": false,
   "ssh": {
     "user": "ubuntu",
@@ -72,18 +72,15 @@
       "primary_ip": "",
       "ha": false,
       "known": true,
-      "info": "https://portainer.maju.example.id (user admin, password state/secrets/portainer_admin)",
-      "about": {
-        "id": "Halaman web untuk melihat dan mengelola container dan stack di cluster.",
-        "en": "A web page to see and manage the containers and stacks of the cluster."
-      },
+      "info": "https://portainer.northwind.example.com (user admin, password state/secrets/portainer_admin)",
+      "about": "A web page to see and manage the containers and stacks of the cluster.",
       "web": [
         {
           "host": "portainer",
           "path": "/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://portainer.maju.example.id/"
+          "url": "https://portainer.northwind.example.com/"
         }
       ],
       "ports": [],
@@ -94,10 +91,7 @@
       "health": "POST /api/auth",
       "laptop": "web",
       "notes": [
-        {
-          "id": "File kata sandi hanya dibaca saat Portainer pertama kali jalan. Setelah itu kata sandi diganti di halaman Portainer.",
-          "en": "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
-        }
+        "The password file is read only at Portainer's first start. After that, change the password in Portainer itself."
       ],
       "images": [
         {
@@ -127,10 +121,7 @@
       "ha": false,
       "known": true,
       "info": "10.10.0.10:5432 (user postgres, password state/secrets/postgres)",
-      "about": {
-        "id": "Database SQL untuk aplikasi Anda (dan untuk Kong, Keycloak, Authelia).",
-        "en": "An SQL database for your apps (and for Kong, Keycloak and Authelia)."
-      },
+      "about": "An SQL database for your apps (and for Kong, Keycloak and Authelia).",
       "web": [],
       "ports": [
         {
@@ -145,14 +136,8 @@
       "health": "pg_isready",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 2 server atau lebih, PostgreSQL berjalan dengan Patroni. Server utama (primary) bisa berpindah; aplikasi di cluster memakai database-proxy.",
-          "en": "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy."
-        },
-        {
-          "id": "Naik versi mayor (misalnya 18 ke 19) butuh dump dan restore manual.",
-          "en": "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
-        }
+        "On 2 or more servers PostgreSQL runs with Patroni. The primary can move; apps in the cluster use the database-proxy.",
+        "A major version upgrade (for example 18 to 19) needs a manual dump and restore."
       ],
       "images": [
         {
@@ -176,10 +161,7 @@
       "ha": false,
       "known": true,
       "info": "10.10.0.10:6379 (password state/secrets/redis)",
-      "about": {
-        "id": "Penyimpanan key-value di memori, untuk cache dan sesi login.",
-        "en": "An in-memory key-value store, for cache and login sessions."
-      },
+      "about": "An in-memory key-value store, for cache and login sessions.",
       "web": [],
       "ports": [
         {
@@ -194,10 +176,7 @@
       "health": "redis-cli ping",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Dengan 3 server ada satu primary dan dua salinan, dipantau Sentinel (port 26379, nama master \"ansibro\").",
-          "en": "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
-        }
+        "On 3 servers there is one primary and two copies, watched by Sentinel (port 26379, master name \"ansibro\")."
       ],
       "images": [
         {
@@ -220,18 +199,15 @@
       "primary_ip": "10.10.0.10",
       "ha": false,
       "known": true,
-      "info": "S3 http://10.10.0.10:9000 (keys state/secrets/rustfs_access_key, rustfs_secret_key), console https://rustfs.maju.example.id/rustfs/console/ (needs traefik)",
-      "about": {
-        "id": "Penyimpanan file kompatibel S3 untuk aplikasi Anda.",
-        "en": "S3-compatible file storage for your apps."
-      },
+      "info": "S3 http://10.10.0.10:9000 (keys state/secrets/rustfs_access_key, rustfs_secret_key), console https://rustfs.northwind.example.com/rustfs/console/ (needs traefik)",
+      "about": "S3-compatible file storage for your apps.",
       "web": [
         {
           "host": "rustfs",
           "path": "/rustfs/console/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://rustfs.maju.example.id/rustfs/console/"
+          "url": "https://rustfs.northwind.example.com/rustfs/console/"
         }
       ],
       "ports": [
@@ -247,10 +223,7 @@
       "health": "TCP 9000",
       "laptop": "tunnel",
       "notes": [
-        {
-          "id": "Region S3 adalah us-east-1.",
-          "en": "The S3 region is us-east-1."
-        }
+        "The S3 region is us-east-1."
       ],
       "images": [
         {
@@ -271,18 +244,15 @@
       "primary_ip": "",
       "ha": false,
       "known": true,
-      "info": "https://traefik.maju.example.id (user admin, password state/secrets/traefik_admin)",
-      "about": {
-        "id": "Pintu masuk semua halaman web. Menerima HTTPS untuk domain dan meneruskan tiap subdomain ke aplikasinya, lengkap dengan sertifikat.",
-        "en": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates."
-      },
+      "info": "https://traefik.northwind.example.com (user admin, password state/secrets/traefik_admin)",
+      "about": "The front door for every web page. It receives HTTPS for the domain and sends each subdomain to its app, with certificates.",
       "web": [
         {
           "host": "traefik",
           "path": "/dashboard/",
           "guard": "admin",
           "login": "layer",
-          "url": "https://traefik.maju.example.id/dashboard/"
+          "url": "https://traefik.northwind.example.com/dashboard/"
         }
       ],
       "ports": [],
@@ -314,39 +284,36 @@
       "primary_ip": "10.10.0.10",
       "ha": false,
       "known": true,
-      "info": "Grafana https://grafana.maju.example.id (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.maju.example.id, metrics https://metrics.maju.example.id/vmui, logs https://logs.maju.example.id/select/vmui",
-      "about": {
-        "id": "Pemantauan lengkap. Metrik, log, aturan peringatan, Grafana, dan peringatan ke Telegram, email, atau webhook.",
-        "en": "Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook."
-      },
+      "info": "Grafana https://grafana.northwind.example.com (user admin, password state/secrets/grafana_admin). With the Traefik login: alerts https://alertmanager.northwind.example.com, metrics https://metrics.northwind.example.com/vmui, logs https://logs.northwind.example.com/select/vmui",
+      "about": "Full monitoring. Metrics, logs, alert rules, Grafana, and alerts to Telegram, email or a webhook.",
       "web": [
         {
           "host": "grafana",
           "path": "/",
           "guard": "admin-ip",
           "login": "own",
-          "url": "https://grafana.maju.example.id/"
+          "url": "https://grafana.northwind.example.com/"
         },
         {
           "host": "alertmanager",
           "path": "/",
           "guard": "admin",
           "login": "layer",
-          "url": "https://alertmanager.maju.example.id/"
+          "url": "https://alertmanager.northwind.example.com/"
         },
         {
           "host": "metrics",
           "path": "/vmui",
           "guard": "admin",
           "login": "layer",
-          "url": "https://metrics.maju.example.id/vmui"
+          "url": "https://metrics.northwind.example.com/vmui"
         },
         {
           "host": "logs",
           "path": "/select/vmui",
           "guard": "admin",
           "login": "layer",
-          "url": "https://logs.maju.example.id/select/vmui"
+          "url": "https://logs.northwind.example.com/select/vmui"
         }
       ],
       "ports": [],
@@ -358,10 +325,7 @@
       "health": "Watchdog alert",
       "laptop": "web",
       "notes": [
-        {
-          "id": "Riwayat metrik dan log tidak ikut di-backup; yang di-backup adalah pengaturan, Grafana, dan Alertmanager.",
-          "en": "The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are."
-        }
+        "The metrics and logs history is not backed up; the settings, Grafana and Alertmanager are."
       ],
       "images": [
         {
@@ -405,10 +369,7 @@
       "port": 5000,
       "version": "3.1.2",
       "license": "Apache-2.0",
-      "about": {
-        "id": "Registry image pribadi di setiap manager. Semua server menarik image dari sini.",
-        "en": "A private image registry on every manager. All servers pull images from it."
-      }
+      "about": "A private image registry on every manager. All servers pull images from it."
     },
     {
       "name": "monitoring-agents",
@@ -416,10 +377,7 @@
       "port": 9100,
       "version": "v1.12.1",
       "license": "Apache-2.0",
-      "about": {
-        "id": "node-exporter, cAdvisor, Vector, dan exporter database di setiap server, plus timer ansibro-metrics.",
-        "en": "node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer."
-      }
+      "about": "node-exporter, cAdvisor, Vector and the database exporters on every server, plus the ansibro-metrics timer."
     },
     {
       "name": "backup",
@@ -427,17 +385,14 @@
       "port": null,
       "version": "",
       "license": "BSD-2-Clause",
-      "about": {
-        "id": "Timer ansibro-backup dengan restic setiap malam di setiap server.",
-        "en": "The ansibro-backup timer with restic, every night on every server."
-      }
+      "about": "The ansibro-backup timer with restic, every night on every server."
     }
   ],
   "backup": {
     "enabled": true,
     "kind": "s3",
-    "host": "s3.example.id",
-    "where": "https://s3.example.id/maju-backup",
+    "host": "s3.example.com",
+    "where": "https://s3.example.com/northwind-backup",
     "time": "02:00",
     "keep": {
       "daily": 7,

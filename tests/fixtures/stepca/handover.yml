@@ -1,36 +1,34 @@
-lang: id
-environment: Produksi
-document: {number: 001/DOK/NUSA/XI/2026, version: "1.0", prepared_by: Rina Wijaya, reviewed_by: Andi Saputra, approved_by: Dewi Lestari, revisions: [{version: "1.0", date: 2026-11-04, by: Rina Wijaya, change: Terbitan pertama}]}
-bast:
-  number: 001/BAST/NUSA/XI/2026
+environment: Production
+document: {number: DOC-2026-001, version: "1.0", prepared_by: Emma Clarke, reviewed_by: Daniel Reed, approved_by: Laura Bennett, revisions: [{version: "1.0", date: 2026-11-04, by: Emma Clarke, change: First issue}]}
+certificate:
+  number: HC-2026-001
   date: 2026-11-04
-  place: Jakarta
+  place: London
   stage: single
-  contract: {name: Pembangunan Platform Aplikasi, number: SPK-017/MAJU/IX/2026, date: 2026-09-01}
+  contract: {name: Application Platform Build, number: PO-2026-017, date: 2026-09-01}
   first_party: client
-  meterai: {enabled: false, side: client}
   copies: 2
-  mengetahui: [{name: Hendra Gunawan, title: Direktur TI, company: PT Maju Bersama}]
+  acknowledged_by: [{name: James Carter, title: IT Director, company: Northwind Logistics Ltd}]
   witnesses: []
-client: {name: PT Maju Bersama, short: Maju, address: "Jl. Sudirman No. 1, Jakarta", logo: null, signer: {name: Siti Rahma, title: Kepala Infrastruktur}}
-vendor: {name: PT Nusantara Teknologi, short: Nusa, address: "Jl. Gatot Subroto No. 9, Jakarta", logo: null, phone: "+62 21 555 0101", email: support@nusa.example, website: https://nusa.example, signer: {name: Rina Wijaya, title: Project Manager}}
+client: {name: Northwind Logistics Ltd, short: Northwind, address: "1 Harbour Street, London", logo: null, signer: {name: Sarah Miller, title: Head of Infrastructure}}
+vendor: {name: Bluewave Systems Ltd, short: Bluewave, address: "9 Market Square, London", logo: null, phone: "+44 20 7946 0101", email: support@bluewave.example, website: https://bluewave.example, signer: {name: Emma Clarke, title: Project Manager}}
 servers:
-  manager1: {public_ip: null, provider: DigitalOcean, region: SGP1}
+  manager1: {public_ip: null, provider: DigitalOcean, region: LON1}
 provider: DigitalOcean
-dns: {mode: internal, provider: Active Directory DNS, owner: PT Maju Bersama, proxied: false}
+dns: {mode: internal, provider: Active Directory DNS, owner: Northwind Logistics Ltd, proxied: false}
 people:
-  - {name: Budi Santoso, persona: operator, os: windows, allow_from: [198.51.100.7]}
-  - {name: Siti Rahma, persona: viewer, os: macos, allow_from: [198.51.100.0/24]}
+  - {name: Tom Hughes, persona: operator, os: windows, allow_from: [198.51.100.7]}
+  - {name: Sarah Miller, persona: viewer, os: macos, allow_from: [198.51.100.0/24]}
 ssh_handover: client_key
 state_owner: vendor
 password_change_days: 7
 vendor_access_end: 2026-12-04
-delivery: {kdbx_channel: USB diserahkan langsung, passphrase_channel: telepon, recipient: Siti Rahma}
-support: {contacts: [{name: Rina Wijaya, role: Project Manager, phone: "+62 812 0000 1111", email: rina@nusa.example}], hours: "Senin-Jumat 09.00-17.00 WIB", sla: Respons dalam 4 jam kerja, warranty: {months: 3, until: 2027-02-04, scope: Perbaikan kesalahan konfigurasi dari pekerjaan ini}}
+delivery: {kdbx_channel: USB stick handed over in person, passphrase_channel: phone call, recipient: Sarah Miller}
+support: {contacts: [{name: Emma Clarke, role: Project Manager, phone: "+44 20 7946 0111", email: emma@bluewave.example}], hours: "Mon-Fri 09:00-17:00 UK time", sla: Response within 4 business hours, warranty: {months: 3, until: 2027-02-04, scope: Fixes for configuration errors in this work}}
 restore_drill: null
 summary_note: null
 known_issues: []
-out_of_scope: [Aplikasi bisnis milik klien]
+out_of_scope: [The client's business applications]
 extra_apps: []
 notes: []
 attach: []
