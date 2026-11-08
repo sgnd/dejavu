@@ -26,7 +26,7 @@ dejavu is a [skill](#words-used-here): instructions and a small program that you
 
 - **The facts come from ansibro itself**: its settings, its own code and its own list of apps. So the server names, addresses, apps, versions and the backup plan in the documents are the ones that were installed.
 - **What ansibro cannot know, the agent asks you**: the client's name, who signs, the certificate number, how the passwords travel. Your answers go into one file, `handover.yml`.
-- **The passwords never reach a document or the agent.** dejavu puts them straight into the locked file. Before anything is saved, it searches every document for every password; if it finds one, it stops.
+- **The passwords never reach a document or the agent.** dejavu puts them straight into the locked file. Before anything is saved, it searches every document for every password; if it finds one, it stops. The agent never opens ansibro's settings file (`config.yml`), which holds passwords too: dejavu changes the one setting it may change (the allowed IP addresses) itself.
 
 It uses tools that already exist: [pandoc](https://pandoc.org) and [Typst](https://typst.app) make the PDFs, [d2](https://d2lang.com) draws the diagrams, and [KeePassXC](https://keepassxc.org) makes the locked file.
 
@@ -47,6 +47,19 @@ curl -fsSL https://github.com/sgnd/dejavu/releases/latest/download/install.sh | 
 ```
 
 It downloads the newest release, checks it, and adds the skill to every AI agent on your computer. Run it again to update. You can also ask your agent to run the install command above.
+
+It checks the download against the release's SHA-256 sum. When the [GitHub CLI](https://cli.github.com) (`gh`) is installed and logged in, it also checks that this repository's release workflow built it (`gh attestation verify`), and stops when it did not.
+
+### Install one exact version
+
+To know exactly what you install, pick a version on the [releases page](https://github.com/sgnd/dejavu/releases), check its installer, and run it for that version only:
+
+```bash
+v=1.1.0   # the version you want
+curl -fsSLO "https://github.com/sgnd/dejavu/releases/download/v$v/install.sh"
+gh attestation verify install.sh --repo sgnd/dejavu   # optional, with the GitHub CLI: from 1.1.0 on
+DEJAVU_DOWNLOAD_URL="https://github.com/sgnd/dejavu/releases/download/v$v" sh install.sh
+```
 
 ### Update and remove
 
@@ -70,14 +83,15 @@ When something stops, every message has an id, and [the troubleshooting guide](s
 
 1. **Send the PDFs** by email or a shared folder.
 2. **Give the locked file** (`.kdbx`) on another way: for example on a USB stick, in person.
-3. **Say its passphrase** (7 words) by phone or in person to the person named in the handover certificate, never in the same message as the file. You read it in your own terminal; the agent tells you the command. The agent never sees it.
+3. **Say its passphrase** (7 words) by phone or in person to the person named in the handover certificate, never in the same message as the file. You read it in your own terminal; the agent tells you the command. dejavu shows it only in a real terminal, after you type yes, so it does not reach the agent by accident. This is a guard against mistakes, not a lock: a program running on your account could still read it.
 4. **Print the handover certificate**, go through its acceptance checklist (Annex 1) together with the client, and sign.
 5. The client changes every password within the agreed days. The technical documentation says how for each one.
 
 ## Safety
 
-- No password, key or token is ever in a document, a diagram or `handover.yml`. Every build searches all of them, and stops and deletes its files when it finds one.
-- Passwords go only into the locked file. They never appear on screen or in the agent's conversation.
+- No password, key or token is ever in a document, a diagram or `handover.yml`. Every build searches all of them, also where Markdown, Typst or YAML wrote a password with escapes, and the text of the PDFs when `pdftotext` is installed. When it finds one, it stops and deletes its files.
+- Passwords go only into the locked file. dejavu never puts them on screen or in the agent's conversation, and the agent is told never to open the files that hold them, `config.yml` included.
+- When several configs share one `state/` folder, the final build stops: the locked file would hold the other systems' passwords too. It goes on only when you confirm that every password there may go to this client.
 - The output folder must be outside any git repository, so the locked file is never committed by mistake.
 - When ansibro keeps its passwords encrypted (`state.age`), dejavu reads them into memory, and keeps the passphrase there too. Only `check` opens `state/` on disk while ansibro's test runs, and closes it again.
 

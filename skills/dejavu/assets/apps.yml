@@ -373,6 +373,11 @@ secrets:
   registry: {app: registry, when: always, change: both, audience: recovery, verified: true}
   restic: {app: backup, when: backup, change: both, audience: recovery, verified: true}
   k3s_token: {app: k3s, when: k3s, change: internal, audience: internal, verified: true}
+  # ansibro newer than 1.3 (optional: 1.2 and 1.3 have none). k3s workers join with the agent token;
+  # Alertmanager's login (user ansibro) and the VictoriaMetrics/VictoriaLogs admin key.
+  k3s_agent_token: {app: k3s, when: optional, change: internal, audience: internal, verified: false}
+  alertmanager: {app: victoria, when: optional, change: file, audience: internal, verified: false}
+  victoria_admin_key: {app: victoria, when: optional, change: file, audience: internal, verified: false}
 
 # Entries in the credentials file (KeePassXC). A secret not used by an entry here goes into
 # the "internal" group under its own file name, so nothing is ever left out.

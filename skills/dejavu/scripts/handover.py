@@ -12,6 +12,8 @@ Commands:
     check       run ansibro's own acceptance test on the servers (read-only; ask first)
     build       write the documents (Markdown + PDF), the credentials file and SHA256SUMS
     scan        search the output for secret values (build does it too)
+    remove-leak take a secret value out of handover.yml without showing it (after a leak)
+    allow       add IP addresses to an allow-list in config.yml (ssh or admin), without showing the file
     passphrase  show the credentials file's passphrase (only in a real terminal)
 
 Every line starts with "ok:", "warning [id]:", "needs the user [id]:" or "failed [id]:".
@@ -25,10 +27,13 @@ command line, and an attached file is written for a moment to a private temp fol
 
 import argparse
 import base64
+import bisect
 import contextlib
+import copy
 import datetime
 import hashlib
 import hmac
+import html
 import io
 import ipaddress
 import json
@@ -36,10 +41,12 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
+import unicodedata
 import urllib.parse
 
 import jinja2
@@ -657,7 +664,7 @@ def build_facts(ab, args, data):
             status = "unknown"
         elif name not in names:
             status = "missing"
-        elif name in expected or (s["when"] == "optional" and (s["app"] in apps_cfg or s["app"] == "victoria")):
+        elif name in expected or (s["when"] == "optional" and optional_present(name, s, apps_cfg, f)):
             status = "present"
         else:
             status = "stale"
@@ -781,6 +788,16 @@ def build_facts(ab, args, data):
         },
     }
     return facts, ca_file
+
+
+def optional_present(name, s, apps_cfg, f):
+    """Does an optional password file (one that only some ansibro versions write) belong to this
+    system? When its owner is installed: the app, or k3s as the orchestrator. monitor: always."""
+    if name == "monitor":
+        return True
+    if s["app"] == "k3s":
+        return f["orchestrator"] == "k3s"
+    return s["app"] in apps_cfg
 
 
 def data_range():
@@ -923,7 +940,56 @@ def load_answers(out):
         failed("answers", "certificate.stage must be single, pho or fho", code=2)
     if dig(a, "certificate", "first_party") not in (None, "vendor", "client"):
         failed("answers", "certificate.first_party must be vendor or client", code=2)
+    check_text(a)
+    servers = a.get("servers") or {}
+    if not isinstance(servers, dict):
+        failed("answers", "servers must be one entry per server, like  manager1: {public_ip: 203.0.113.10}", code=2)
+    for name, s in servers.items():
+        if s is not None and not isinstance(s, dict):
+            failed("answers", f"servers.{name} must look like {{public_ip: 203.0.113.10, provider: , region: }}",
+                   code=2)
+        ip = (s or {}).get("public_ip")
+        if ip not in (None, "") and not is_ip(ip):
+            # It goes into the client's ssh_config and hosts file: an address and nothing else.
+            failed("answers", f"servers.{name}.public_ip must be an IP address like 203.0.113.10, or null", code=2)
     return a
+
+
+# Answers that may hold several lines (a line break or a tab); every other answer is one line.
+MULTILINE = {"summary_note", "known_issues", "out_of_scope", "notes", "address", "about", "scope", "change"}
+CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+CONTROL_MULTILINE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def check_text(value, path=()):
+    """No control characters in the answers: a line break in a name or an address could add lines
+    to the client's ssh_config or hosts file. The free-text answers (MULTILINE) may have line breaks."""
+    if isinstance(value, dict):
+        for k, v in value.items():
+            check_text(k, path + ("(name)",))
+            check_text(v, path + (str(k),))
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            check_text(v, path + (f"[{i + 1}]",))
+    elif isinstance(value, str):
+        multi = any(p in MULTILINE for p in path)
+        if (CONTROL_MULTILINE if multi else CONTROL).search(value):
+            where = ".".join(path).replace(".[", "[") or "handover.yml"
+            failed("answers", f"{where} has a control character (like a line break or a tab), which is not "
+                   "allowed there: write it on one line" if not multi else
+                   f"{where} has a control character, which is not allowed: remove it", code=2)
+
+
+def is_ip(value):
+    """An IP address (v4 or v6), written plainly: no zone (%eth0), no spaces."""
+    text = str(value)
+    if "%" in text:
+        return False
+    try:
+        ipaddress.ip_address(text)
+    except ValueError:
+        return False
+    return True
 
 
 def upgrade_answers(a):
@@ -1035,8 +1101,28 @@ def jinja_env():
         "yaml": lambda v: yaml.safe_dump(v, allow_unicode=True, sort_keys=False).strip(),
         # A safe YAML/JSON string for the front matter.
         "q": lambda v: json.dumps("" if v is None else str(v), ensure_ascii=False),
+        # ssh_config and hosts lines: a value that can never add a line or an option, and comment text.
+        "ssh": ssh_word,
+        "line": one_line,
     })
     return env
+
+
+SSH_WORD = re.compile(r"[A-Za-z0-9._:/~+-]+")
+
+
+def ssh_word(value):
+    """A value in the client's ssh_config or hosts file: one word of plain characters only."""
+    text = str(value)
+    if not SSH_WORD.fullmatch(text):
+        raise jinja2.TemplateRuntimeError(f"{text!r} cannot go into ssh_config or the hosts file: only letters, "
+                                          "digits and . _ : / ~ + - are allowed there")
+    return text
+
+
+def one_line(value):
+    """Text for a comment line: control characters (a line break) become a space."""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]+", " ", "" if value is None else str(value))
 
 
 def contains_ip(cidrs, ip):
@@ -1131,7 +1217,16 @@ PATTERNS = [
     (re.compile(r"discord(app)?\.com/api/webhooks/"), "a Discord webhook"),
     (re.compile(r"api\.telegram\.org/bot"), "a Telegram bot token"),
 ]
-SCAN_EXT = (".md", ".typ", ".d2", ".svg", ".json", ".txt", ".yml", ".yaml", ".crt", ".csv")
+SCAN_EXT = (".md", ".typ", ".d2", ".svg", ".json", ".txt", ".yml", ".yaml", ".crt", ".csv", ".pdf")
+# Secrets are also searched with the spaces and line breaks of a document taken out (pandoc wraps
+# lines, a PDF breaks them), when they are at least this long: shorter ones would match by chance.
+FLAT_MIN = 10
+# What pandoc and Typst make of plain characters ("x" becomes “x”, -- an en dash, a hyphen before a
+# digit a minus sign), back to the plain ones. NFKC (in typeset) already does … and a no-break space.
+TYPOGRAPHY = str.maketrans({"\u201c": '"', "\u201d": '"', "\u201e": '"', "\u2018": "'", "\u2019": "'",
+                            "\u2013": "--", "\u2014": "---", "\u2212": "-", "\u2010": "-", "\u2011": "-",
+                            "\u00ad": None, "\u200b": None})
+PDFTOTEXT_PLACES = ("/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext")
 
 
 def config_secret_values(ab):
@@ -1181,21 +1276,123 @@ def needles(ab, slug):
     return out
 
 
+def typeset(text):
+    """Text with the typography of pandoc and Typst made plain: the same for a value and a document."""
+    return unicodedata.normalize("NFKC", text).translate(TYPOGRAPHY)
+
+
+def views(text):
+    """Text as a reader sees it: without HTML entities (SVG) and typeset made plain; once as it is,
+    for a backslash that is a plain character (SVG, a PDF's text), and once without the backslash
+    escapes of Markdown, Typst, JSON, YAML and d2 (md_escape writes a_b as a\\_b)."""
+    text = typeset(html.unescape(text))
+    return text, re.sub(r"\\(.)", r"\1", text)
+
+
+def find_pdftotext():
+    return shutil.which("pdftotext") or next((p for p in PDFTOTEXT_PLACES if os.access(p, os.X_OK)), None)
+
+
+PDF_TEXT = {}  # (path, mtime, size) -> text: a PDF is read once per run, not once per leak check
+
+
+def pdf_text(path):
+    """The text of a PDF, with pdftotext (poppler) when it is installed; else None (its Typst source,
+    the .typ in build/, is searched in any case)."""
+    tool = find_pdftotext()
+    if not tool:
+        return None
+    st = os.stat(path)
+    key = (path, st.st_mtime_ns, st.st_size)
+    if key not in PDF_TEXT:
+        r = run([tool, "-q", "-enc", "UTF-8", path, "-"], encoding="utf-8", errors="replace")
+        PDF_TEXT[key] = r.stdout if r.returncode == 0 else None
+    return PDF_TEXT[key]
+
+
 def scan(paths, found_needles):
-    """Search text files for secret values and secret-looking patterns. Returns the hits."""
+    """Search the output for secret values and secret-looking patterns: every text file, and the
+    text of every PDF. Returns the hits as (path, line, name)."""
     hits = []
     for path in paths:
         if not path.endswith(SCAN_EXT) or not os.path.isfile(path):
             continue
-        with open(path, encoding="utf-8", errors="replace") as f:
-            for no, line in enumerate(f, 1):
-                for name, value in found_needles.items():
-                    if value in line:
-                        hits.append((path, no, name))
-                for rx, what in PATTERNS:
-                    if rx.search(line):
-                        hits.append((path, no, what))
+        if path.endswith(".pdf"):
+            text = pdf_text(path)
+            if text is None:
+                continue
+        else:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        hits += [(path, no, name) for no, name in
+                 scan_text(text, found_needles, yaml_file=path.endswith((".yml", ".yaml")))]
     return hits
+
+
+def scan_text(text, found_needles, yaml_file=False):
+    """The hits in one text as (line, name). A value is found as it is, and also when the text
+    escaped or typeset it (Markdown, Typst, JSON, SVG, a PDF), or broke it over lines."""
+    hits = []
+
+    def hit(no, name):
+        if (no, name) not in hits:
+            hits.append((no, name))
+
+    plain_needles = {name: typeset(v) for name, v in found_needles.items()}
+    # Both views without any space or line break, and where each line starts in them.
+    flat, starts, size = ([], []), ([], []), [0, 0]
+    for no, line in enumerate(text.splitlines(), 1):
+        both = views(line)
+        for name, value in found_needles.items():
+            if value in line or any(plain_needles[name] in v for v in both):
+                hit(no, name)
+        for rx, what in PATTERNS:
+            if rx.search(line) or any(rx.search(v) for v in both):
+                hit(no, what)
+        for k, v in enumerate(both):
+            squeezed = re.sub(r"\s+", "", v)
+            starts[k].append(size[k])
+            flat[k].append(squeezed)
+            size[k] += len(squeezed)
+    found = {name for _no, name in hits}
+    flat = ["".join(f) for f in flat]
+    for name, value in plain_needles.items():
+        squeezed = re.sub(r"\s+", "", value)
+        if name in found or len(squeezed) < FLAT_MIN:
+            continue
+        for k in (0, 1):
+            i = flat[k].find(squeezed)
+            if i >= 0:
+                hit(bisect.bisect_right(starts[k], i), name)
+                break
+    if yaml_file:
+        for no, name in yaml_hits(text, found_needles, plain_needles):
+            hit(no, name)
+    return hits
+
+
+def yaml_hits(text, found_needles, plain_needles):
+    """The values of a YAML file as YAML reads them, so a secret written with YAML escapes
+    ("\\x41", "\\u00e9", a quote doubled) is found too. Composing builds no objects."""
+    try:
+        root = yaml.compose(text, Loader=yaml.SafeLoader)
+    except yaml.YAMLError:
+        return []
+    out = []
+    todo = [root] if root is not None else []
+    while todo:
+        node = todo.pop()
+        if isinstance(node, yaml.ScalarNode):
+            view = typeset(node.value)
+            for name, value in found_needles.items():
+                if value in node.value or plain_needles[name] in view:
+                    out.append((node.start_mark.line + 1, name))
+        elif isinstance(node, yaml.SequenceNode):
+            todo.extend(node.value)
+        elif isinstance(node, yaml.MappingNode):
+            for k, v in node.value:
+                todo.extend((k, v))
+    return out
 
 
 def walk(folder, skip=()):
@@ -1206,18 +1403,30 @@ def walk(folder, skip=()):
 
 
 def leak_gate(ab, out, slug, fresh=()):
-    """Stop the build when a secret reached a generated file. Deletes this run's files."""
-    files = [os.path.join(out, "handover.yml")] + list(walk(out, skip={"signed"}))
+    """Stop when a secret reached a generated file. Deletes the files of this run, and every file
+    that dejavu made (dist/, build/, facts.json) with a secret in it, so none of them can be sent."""
+    answers = os.path.join(out, "handover.yml")
+    files = list(dict.fromkeys([answers] + list(walk(out, skip={"signed"}))))
     hits = scan(files, needles(ab, slug))
     if not hits:
         return
     for path, no, name in hits:
         say("failed", f"{os.path.relpath(path, out)}:{no} contains {name}", "leak")
-    for p in fresh:
-        if os.path.isfile(p):
-            os.remove(p)
-    print("A secret value reached a document. The files of this run were deleted. "
-          "Remove the value from handover.yml, then build again.", flush=True)
+    made = tuple(os.path.join(out, d) + os.sep for d in ("dist", "build"))
+    gone = {p for p in fresh if os.path.isfile(p)}
+    gone |= {p for p, _no, _name in hits if p.startswith(made) or p == os.path.join(out, "facts.json")}
+    for p in sorted(gone):
+        os.remove(p)
+    print("A secret value reached a document. The files of this run, and every file dejavu made that "
+          "held a secret, were deleted.", flush=True)
+    kept = sorted({p for p, _no, _name in hits} - gone)
+    if answers in kept:
+        print("The secret is in handover.yml. Do not open that file: take the value out with "
+              f"remove-leak --out {out} (it never shows the value), then build again.", flush=True)
+    for p in kept:
+        if p != answers:
+            print(f"{os.path.relpath(p, out)} was not made by this build: the user deletes it, or the secret in "
+                  "it, without showing it.", flush=True)
     raise Stop(5)
 
 
@@ -1748,7 +1957,8 @@ def render(env, template, ctx, path):
 
 
 def pdf(tools, build, md, pdf_path, toc, date):
-    """Markdown -> Typst (pandoc, our template) -> PDF/A-2b (typst)."""
+    """Markdown -> Typst (pandoc, our template) -> PDF/A-2b (typst). Returns both files it made,
+    so the leak gate deletes the PDF too."""
     typ = os.path.splitext(md)[0] + ".typ"
     cmd = tools["pandoc"] + [md, "-f", "markdown", "-t", "typst", "-s", "--template",
                              os.path.join(build, "handover.typst"), "-o", typ]
@@ -1763,7 +1973,37 @@ def pdf(tools, build, md, pdf_path, toc, date):
                               pdf_path], env=env)
     if r.returncode != 0:
         failed("typst", r.stderr.strip()[-800:])
-    return typ
+    return [typ, pdf_path]
+
+
+def ca_pem(path, what):
+    """The CA certificate(s) in a file, checked and written out again as PEM: only a CA certificate
+    goes into the pack, never another file (or a private key next to the certificate)."""
+    from cryptography import x509
+    from cryptography.hazmat.primitives import serialization
+    try:
+        with open(os.path.expanduser(str(path)), "rb") as fh:
+            raw = fh.read()
+    except OSError as e:
+        failed("ca-cert", f"{what} {path} cannot be read ({e.strerror}). It must be the CA certificate the "
+               "laptops must trust (a .crt or .pem file).", code=2)
+    try:
+        certs = x509.load_pem_x509_certificates(raw) if b"-----BEGIN" in raw else [x509.load_der_x509_certificate(raw)]
+    except ValueError:
+        certs = []
+    if not certs:
+        failed("ca-cert", f"{what} {path} is not a certificate. It must be the CA certificate the laptops must "
+               "trust (a .crt or .pem file).", code=2)
+    for c in certs:
+        try:
+            is_ca = c.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+        except x509.ExtensionNotFound:
+            is_ca = False
+        if not is_ca:
+            failed("ca-cert", f"{what} {path} holds a certificate that is not a CA certificate "
+                   f"({c.subject.rfc4514_string()}). Give the CA (root) certificate that signed the server "
+                   "certificates.", code=2)
+    return b"".join(c.public_bytes(serialization.Encoding.PEM) for c in certs)
 
 
 def cmd_build(ab, args, data):
@@ -1784,6 +2024,20 @@ def cmd_build(ab, args, data):
         for m in missing:
             print(f"  - {m}")
         needs_user("answers", "fill them in handover.yml, or build a draft with --draft")
+    # Several configs share one state/: its password files are of every system installed from here,
+    # and dejavu cannot tell which are this one's. Only the user can say they may all go to this client.
+    shared = next((w for w in facts["warnings"] if w["id"] == "shared-state"), None)
+    no_vault = False
+    if shared and ab.state_mode() != "none" and not args.accept_shared_state:
+        others = ", ".join(c for c in shared["configs"] if c != os.path.basename(ab.config))
+        why = (f"{others} {'shares' if ',' not in others else 'share'} state/ with {os.path.basename(ab.config)}, "
+               "so state/ may hold the passwords of another system too, and the credentials file (with the "
+               "ansibro installer archive in it) would include them.")
+        if not draft:
+            needs_user("shared-state", why + " Ask the user. Only when they confirm that every password in state/ "
+                       "may go to this client, build again with --accept-shared-state.")
+        warning("shared-state", why + " So this draft has no credentials file.")
+        no_vault = True
 
     # Hand edits are kept: the wording belongs in handover.yml.
     dist = os.path.join(out, "dist")
@@ -1832,9 +2086,11 @@ def cmd_build(ab, args, data):
             continue
         fresh.append(render(env, tpl, ctx, p))
     if ca_file or dig(a, "tls", "client_ca"):
-        src = dig(a, "tls", "client_ca") or ca_file
+        what = "tls.client_ca in handover.yml" if dig(a, "tls", "client_ca") else "acme_ca_cert in config.yml"
+        pem = ca_pem(dig(a, "tls", "client_ca") or ca_file, what)
         dst = os.path.join(dist, f"{slug}-ca.crt")
-        shutil.copyfile(os.path.expanduser(src), dst)
+        with open(dst, "wb") as fh:
+            fh.write(pem)
         fresh.append(dst)
     ssh_key = None
     if a.get("ssh_handover") == "generated" and ab.state_mode() != "none":
@@ -1863,6 +2119,8 @@ def cmd_build(ab, args, data):
     cli = find_keepassxc()
     if ab.state_mode() == "none":
         warning("no-state", "no state/ here, so there is no credentials file")
+    elif no_vault:
+        pass  # shared-state, said above
     elif not cli:
         if not draft:
             needs_user("keepassxc", f"keepassxc-cli is missing: {install_lines()['keepassxc']}")
@@ -1909,7 +2167,8 @@ def cmd_build(ab, args, data):
             r = run(tools["d2"] + ["--layout=elk", "--pad", "20", d2, svg])
             if r.returncode != 0:
                 failed("d2", r.stderr.strip()[-400:])
-            shutil.copyfile(svg, os.path.join(dist, f"{diagram}.svg"))
+            fresh.append(svg)
+            fresh.append(shutil.copyfile(svg, os.path.join(dist, f"{diagram}.svg")))
         shutil.copyfile(os.path.join(ASSETS, "handover.typst"), os.path.join(build, "handover.typst"))
         for who in ("vendor", "client"):
             src = dig(a, who, "logo")
@@ -1919,7 +2178,8 @@ def cmd_build(ab, args, data):
             shutil.copyfile(src, os.path.join(build, logo_name(who, src)))
         for md in docs:
             b = shutil.copy(md, build)
-            fresh.append(pdf(tools, build, b, os.path.splitext(md)[0] + ".pdf", True, doc_date))
+            fresh.append(b)
+            fresh.extend(pdf(tools, build, b, os.path.splitext(md)[0] + ".pdf", True, doc_date))
         leak_gate(ab, out, slug, fresh)
     files = []
     for p in sorted(walk(dist)):
@@ -1938,7 +2198,8 @@ def cmd_build(ab, args, data):
     leak_gate(ab, out, slug, fresh)
     if tools:
         b = shutil.copy(p, build)
-        fresh.append(pdf(tools, build, b, os.path.splitext(p)[0] + ".pdf", False, doc_date))
+        fresh.append(b)
+        fresh.extend(pdf(tools, build, b, os.path.splitext(p)[0] + ".pdf", False, doc_date))
     leak_gate(ab, out, slug, fresh)
 
     # 5. SHA256SUMS over everything handed over, and what was written (to spot hand edits).
@@ -2005,24 +2266,282 @@ def saved_facts(ab, out):
     return {"domain": domain or "x"}
 
 
+def answers_slug(ab, out):
+    """The slug, from handover.yml as it is (not checked): the leak check must work on any handover.yml."""
+    try:
+        a = load_yaml(os.path.join(out, "handover.yml"))
+    except (OSError, yaml.YAMLError):
+        a = {}
+    return slug_of(a if isinstance(a, dict) else {}, saved_facts(ab, out))
+
+
 def cmd_scan(ab, args, data):
     out = prepare_out(args.out or default_out(ab), create=False)
-    a = load_answers(out)
-    leak_gate(ab, out, slug_of(a, saved_facts(ab, out)))
+    leak_gate(ab, out, answers_slug(ab, out))
     ok("no secret value found in the output")
     raise Stop(0)
 
 
 def cmd_passphrase(ab, args, data):
-    if not sys.stdout.isatty():
-        failed("not-a-terminal", "the passphrase is shown only in a real terminal, so it never reaches an AI agent "
-               "or a log. Ask the user to run this command in their own Terminal.")
+    """A guard against accidents, not a lock: an AI agent's command usually has no terminal, so it gets
+    no passphrase; one that runs in a terminal first meets a question on /dev/tty that it must not answer."""
+    if not (sys.stdout.isatty() and sys.stdin.isatty()):
+        failed("not-a-terminal", "the passphrase is shown only in a real terminal, so it does not reach an AI agent "
+               "or a log by accident. Ask the user to run this command in their own Terminal.")
     out = prepare_out(args.out or default_out(ab), create=False)
-    a = load_answers(out)
-    phrase = ab.read_passphrase(slug_of(a, saved_facts(ab, out)))
+    phrase = ab.read_passphrase(answers_slug(ab, out))
     if not phrase:
         needs_user("no-passphrase", "there is no passphrase yet. Run build first.")
+    try:
+        with open("/dev/tty", "rb+", buffering=0) as tty:  # unbuffered: a terminal cannot seek
+            tty.write(b"Only the user reads the passphrase. An AI agent stops here and never answers.\n"
+                      b"Type yes to show it: ")
+            answer = tty.readline().decode(errors="replace").strip().lower()
+    except OSError:
+        failed("not-a-terminal", "the passphrase is shown only in a real terminal. Ask the user to run this "
+               "command in their own Terminal.")
+    if answer != "yes":
+        ok("nothing shown")
+        raise Stop(0)
     print(phrase)
+    raise Stop(0)
+
+
+# ---------- changing config.yml and handover.yml without showing them --------------------
+
+ALLOW_LISTS = {"ssh": ("ssh", "allow_from"), "ssh.allow_from": ("ssh", "allow_from"),
+               "admin": ("admin_allow_from",), "admin_allow_from": ("admin_allow_from",)}
+
+
+def read_text(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def replace_text(path, text):
+    """Write a file in one step (a new file moved over the old one), with the old file's mode."""
+    real = os.path.realpath(path)
+    mode = stat.S_IMODE(os.stat(real).st_mode)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(real), prefix=".dejavu-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        os.chmod(tmp, mode)
+        os.replace(tmp, real)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.remove(tmp)
+        raise
+
+
+def yaml_flow_list(values):
+    """[a, b] for config.yml. An item is quoted only when YAML would read it as something else."""
+    items = []
+    for v in values:
+        s = str(v)
+        items.append(s if yaml.safe_load(f"[{s}]") == [s] else json.dumps(s))
+    return "[" + ", ".join(items) + "]"
+
+
+def set_yaml_list(text, path, values):
+    """The text of config.yml with one list set (admin_allow_from, or allow_from under ssh:), every
+    other line and comment kept as it is. None when the file has a form this does not change; the
+    caller loads the result and compares it too."""
+    lines = text.splitlines(keepends=True)
+    nl = "\r\n" if "\r\n" in text else "\n"
+    value = yaml_flow_list(values)
+
+    def content(line):  # not blank, not only a comment
+        s = line.strip()
+        return bool(s) and not s.startswith("#")
+
+    def find(name, indent, start, end):
+        rx = re.compile(re.escape(indent + name) + r":(?=\s|$)")
+        return next((i for i in range(start, end) if rx.match(lines[i])), None)
+
+    def put(i, head):
+        """Line i (`head` is its "key:" part) gets the list, over the list that was there."""
+        body = lines[i].rstrip("\r\n")
+        rest = body[len(head):]
+        end = i + 1
+        if rest.strip().startswith("["):  # [a, b] on this line
+            close = rest.find("]")
+            if close < 0:
+                return False
+            comment = rest[close + 1:].strip()
+            if comment and not comment.startswith("#"):
+                return False
+        else:  # empty or null; the items, if any, follow as "- x" lines
+            m = re.fullmatch(r"\s*(?:null|~)?\s*(#.*)?", rest)
+            if not m:
+                return False
+            comment = (m.group(1) or "").strip()
+            indent = len(head) - len(head.lstrip(" "))
+            for j in range(i + 1, len(lines)):
+                s = lines[j]
+                if not content(s):
+                    continue
+                if len(s) - len(s.lstrip(" ")) < indent or not re.match(r"-(\s|$)", s.lstrip(" ")):
+                    break
+                end = j + 1
+        line = f"{head} {value}"
+        if comment:  # the comment stays, in its column when there is room
+            line += " " * max(2, len(body.rstrip()) - len(comment) - len(line)) + comment
+        kept = [s for s in lines[i + 1:end] if s.strip().startswith("#")]
+        lines[i:end] = [line + (lines[i][len(body):] or nl)] + kept
+        return True
+
+    def append(new):
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += nl
+        lines.extend(x + nl for x in new)
+
+    if path == ("admin_allow_from",):
+        i = find("admin_allow_from", "", 0, len(lines))
+        if i is None:
+            append([f"admin_allow_from: {value}"])
+        elif not put(i, "admin_allow_from:"):
+            return None
+        return "".join(lines)
+    s = find("ssh", "", 0, len(lines))
+    if s is None:
+        append(["ssh:", f"  allow_from: {value}"])
+        return "".join(lines)
+    if re.sub(r"#.*", "", lines[s].rstrip("\r\n")[len("ssh:"):]).strip():
+        return None  # ssh: {user: ..., key: ...} on one line
+    end = next((k for k in range(s + 1, len(lines)) if content(lines[k]) and not lines[k][0].isspace()), len(lines))
+    children = [k for k in range(s + 1, end) if content(lines[k])]
+    if not children:
+        after, indent = s, "  "
+    else:
+        first = lines[children[0]]
+        indent = first[:len(first) - len(first.lstrip(" "))]
+        i = find("allow_from", indent, s + 1, end)
+        if i is not None:
+            return "".join(lines) if put(i, indent + "allow_from:") else None
+        after = children[-1]
+    if not lines[after].endswith("\n"):
+        lines[after] += nl
+    lines.insert(after + 1, f"{indent}allow_from: {value}{nl}")
+    return "".join(lines)
+
+
+def cmd_allow(ab, args, data):
+    """Add (or with --remove take off) IP addresses on an allow-list in config.yml. The file holds
+    passwords, so the agent never opens it: dejavu changes the one line and shows only the list."""
+    ab.check_folder()
+    if len(args.items) < 2 or args.items[0] not in ALLOW_LISTS:
+        failed("allow", "say which list and which addresses, like: allow ssh 203.0.113.0/24 198.51.100.7 "
+               "(the lists: ssh for ssh.allow_from, admin for admin_allow_from)", code=2)
+    path = ALLOW_LISTS[args.items[0]]
+    name = ".".join(path)
+    config = os.path.basename(ab.config)
+    addresses = []
+    for x in args.items[1:]:
+        try:
+            ipaddress.ip_network(x, strict=False)
+            if "%" in x:
+                raise ValueError(x)
+        except ValueError:
+            failed("allow", f"{x} is not an IP address or range (like 203.0.113.7 or 203.0.113.0/24)", code=2)
+        addresses.append(x)
+    text = read_text(ab.config)
+    try:
+        cfg = yaml.safe_load(text) or {}
+    except yaml.YAMLError:
+        cfg = None
+    if not isinstance(cfg, dict):
+        failed("config", f"{config} is not valid YAML, so it was not changed. The user fixes it in their own editor.")
+    current = dig(cfg, *path) or []
+    if not isinstance(current, list):
+        failed("allow", f"{name} in {config} is not a list, so it was not changed. The user sets it in their own "
+               "editor, like: [203.0.113.0/24]")
+    current = [str(x) for x in current]
+    if args.remove:
+        new = [x for x in current if x not in addresses]
+    else:
+        new = current + [x for x in dict.fromkeys(addresses) if x not in current]
+    if new == current:
+        ok(f"{name} in {config} already is: {', '.join(new) or 'empty (open to anyone)'}; nothing changed")
+        raise Stop(0)
+    want = copy.deepcopy(cfg)
+    node = want
+    for key in path[:-1]:
+        if not isinstance(node.get(key), dict):
+            node[key] = {}
+        node = node[key]
+    node[path[-1]] = new
+    changed = set_yaml_list(text, path, new)
+    try:
+        same = changed is not None and yaml.safe_load(changed) == want
+    except yaml.YAMLError:
+        same = False
+    if not same:
+        line = f"allow_from: {yaml_flow_list(new)} (under ssh:)" if path[0] == "ssh" else f"{name}: {yaml_flow_list(new)}"
+        failed("allow", f"{config} is written in a form dejavu cannot change safely, so nothing was changed. Ask "
+               f"the user to set this line in their own editor: {line}")
+    replace_text(ab.config, changed)
+    ok(f"{name} in {config} is now: {', '.join(new) or 'empty (open to anyone)'}")
+    ok("the servers use it after ./install.sh: ask the user first. Then run facts again.")
+    raise Stop(0)
+
+
+REMOVED = "(secret removed)"
+# A private key spans many lines: dejavu does not guess where it ends, the user deletes it.
+WHOLE_BLOCKS = ("a private key", "a kubeconfig key")
+
+
+def take_out(text, found):
+    """handover.yml's text with every secret value replaced by REMOVED, also where YAML wrote it with
+    escapes, and every secret-looking URL (a webhook, a password in a URL) replaced as a whole."""
+    forms = set()
+    for v in found.values():
+        forms |= {v, json.dumps(v)[1:-1], json.dumps(v, ensure_ascii=False)[1:-1], v.replace("'", "''")}
+    for form in sorted(forms, key=len, reverse=True):
+        if len(form) >= MIN_SECRET:
+            text = text.replace(form, REMOVED)
+    word = r"[^\s\"'\[\]{},]*"
+    for rx, what in PATTERNS:
+        if what not in WHOLE_BLOCKS:
+            text = re.sub(word + "(?:" + rx.pattern + ")" + word, REMOVED, text)
+    return text
+
+
+def cmd_remove_leak(ab, args, data):
+    """After a leak in handover.yml: take the secret out without showing it (or the line it is on)."""
+    out = prepare_out(args.out or default_out(ab), create=False)
+    path = os.path.join(out, "handover.yml")
+    if not os.path.isfile(path):
+        needs_user("no-answers", f"{path} is missing.")
+    slug = answers_slug(ab, out)
+    found = needles(ab, slug)
+    text = read_text(path)
+    hits = scan_text(text, found, yaml_file=True)
+    if hits:
+        new = text if any(name in WHOLE_BLOCKS for _no, name in hits) else take_out(text, found)
+        left = scan_text(new, found, yaml_file=True)
+        try:
+            before = yaml.safe_load(text)
+        except yaml.YAMLError:
+            before = None
+        try:
+            after = yaml.safe_load(new)
+            valid = before is None or (isinstance(after, dict) and isinstance(before, dict) and set(after) == set(before))
+        except yaml.YAMLError:
+            valid = False
+        if new == text or left or not valid:
+            where = ", ".join(str(n) for n in sorted({no for no, _name in (left or hits)}))
+            failed("remove-leak", f"dejavu cannot take the secret out of handover.yml safely, so the file was not "
+                   f"changed. Ask the user to delete or reword line {where} of {path} in their own editor "
+                   "(do not open it yourself), then run remove-leak again.")
+        replace_text(path, new)
+        for no, name in hits:
+            ok(f"handover.yml line {no}: took out {name}; it now says {REMOVED}")
+        ok("reword those lines with the user (the file has no secret now)")
+    else:
+        ok("handover.yml has no secret value")
+    leak_gate(ab, out, slug)  # the other files: any that dejavu made with a secret in it is deleted
+    ok("no secret value found in the output. Build again.")
     raise Stop(0)
 
 
@@ -2032,7 +2551,8 @@ def cmd_facts_only(ab, args, data):
 
 
 COMMANDS = {"doctor": cmd_doctor, "init": cmd_init, "facts": cmd_facts_only, "check": cmd_check,
-            "build": cmd_build, "scan": cmd_scan, "passphrase": cmd_passphrase}
+            "build": cmd_build, "scan": cmd_scan, "remove-leak": cmd_remove_leak, "allow": cmd_allow,
+            "passphrase": cmd_passphrase}
 
 
 def main(argv=None):
@@ -2040,6 +2560,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="handover.py", description=intro, epilog=rest,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("command", choices=list(COMMANDS))
+    p.add_argument("items", nargs="*", metavar="ARG",
+                   help="allow: the list (ssh or admin), then the IP addresses or ranges")
     p.add_argument("--version", action="version", version=f"dejavu {version()}")
     p.add_argument("--ansibro", default=".", help="the ansibro folder (default: here)")
     p.add_argument("--config", default="config.yml", help="the config that was installed (default: config.yml)")
@@ -2050,12 +2572,18 @@ def main(argv=None):
     p.add_argument("--new-passphrase", action="store_true", help="a new passphrase (when the old one leaked)")
     p.add_argument("--fix", action="store_true", help="doctor: install what is missing where no admin rights are "
                    "needed (mise and the PDF tools; KeePassXC and age with Homebrew on macOS)")
+    p.add_argument("--accept-shared-state", action="store_true",
+                   help="build: the user confirmed that every password in a state/ shared by several configs "
+                   "may go to this client")
+    p.add_argument("--remove", action="store_true", help="allow: take these addresses off the list")
     p.add_argument("--no-pdf", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--inventory-json", help=argparse.SUPPRESS)
     p.add_argument("--groupvars-json", help=argparse.SUPPRESS)
-    args = p.parse_args(argv)
+    args = p.parse_intermixed_args(argv)  # allow ssh --remove 203.0.113.7: options between the items
     if (args.inventory_json or args.groupvars_json or args.no_pdf) and not TEST:
         p.error("--inventory-json, --groupvars-json and --no-pdf are for dejavu's own tests")
+    if args.items and args.command != "allow":
+        p.error(f"{args.command} takes no other arguments: {' '.join(args.items)}")
     data = load_yaml(os.path.join(ASSETS, "apps.yml"))
     ab = Ansibro(args.ansibro, args.config)
     try:

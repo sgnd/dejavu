@@ -23,7 +23,8 @@ handover.py build
              debug call for the group_vars rules, no SSH),
              alerts.yml, CHANGELOG.md, state/secrets names  +  assets/apps.yml   -> facts.json
   render     assets/*.md.j2 with facts.json + handover.yml (the answers)          -> dist/*.md
-  scan       every secret value and pattern searched in every text file           (stops with exit 5)
+  scan       every secret value and pattern searched in every text file, also       (stops with exit 5)
+             escaped or typeset, and in the PDFs' text (pdftotext)
   vault      keepassxc-cli, values on its stdin only                              -> dist/*.kdbx
   pdf        d2 -> SVG, pandoc (assets/handover.typst) -> Typst -> PDF/A          -> dist/*.pdf
   certificate rendered last, with the SHA-256 of every other file                 -> SHA256SUMS
@@ -41,7 +42,8 @@ handover.py build
 **Rules that prevent most bugs:**
 
 - A fact ansibro has is read from ansibro, never written in dejavu. When ansibro has it only in prose, it goes into `apps.yml`, and `tests/drift.py` checks it against ansibro.
-- Templates get the facts and the answers, never a secret value. Text typed by the user goes through the `md` filter; front-matter values through `q`.
+- Templates get the facts and the answers, never a secret value. Text typed by the user goes through the `md` filter; front-matter values through `q`; values in `ssh_config` and the hosts file through `ssh` (comments there through `line`).
+- dejavu never prints `config.yml` and the agent never opens it: it holds passwords. A change dejavu makes in it (`allow`) edits one line in place and checks that nothing else changed.
 - The documents are in English only, for clients anywhere. Use plain international English, and no terms or practices of one country.
 
 ## Check your change
