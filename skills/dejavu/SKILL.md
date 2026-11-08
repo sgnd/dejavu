@@ -23,8 +23,10 @@ Many users are not technical. Use plain words, ask a few questions at a time, an
 
 ## Never
 
-- Never open, print, copy or grep `state/secrets/*`, `state/summary.md`, `state.age`, `state/handover/*`, `config.yml` secret fields, or the `.kdbx`. dejavu reads them itself, in memory.
-- Never write a password, token or key into `handover.yml` or into the chat.
+- Never open, print, copy or grep `state/secrets/*`, `state/summary.md`, `state.age`, `state/handover/*` or the `.kdbx`. dejavu reads them itself, in memory.
+- Never open `config.yml` or any other `config*.yml`: no Read, `cat`, `grep`, `sed`, `head`, Edit or editor, not even one line. It holds passwords (backup keys, alert tokens, webhook URLs), and an edit tool reads the whole file first. The settings you need are in `facts.json`, which has no secrets. Change an allow-list with `allow`; any other change the user makes in their own editor, while you say which setting and which value.
+- Never write a password, token or key into `handover.yml` or into the chat. After a `leak` in `handover.yml`, do not open it until `remove-leak` has taken the value out.
+- Never add `--accept-shared-state` on your own: only after the user said yes (see `shared-state` in references/troubleshooting.md).
 - Never run `./install.sh`, `check`, or anything that connects to the servers without asking first.
 - Never send files anywhere. Sending is the user's job.
 - Never edit the files in `dist/`. Put wording in `handover.yml` and build again.
@@ -42,6 +44,7 @@ Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and
 - `--out`: the output folder (default `~/Handover/<domain>-<config>`). It must be outside every git repository.
 - `--ansibro`: the ansibro folder, when you are not in it (default: the current folder).
 - `--force` (with `build`): overwrite documents that were edited by hand.
+- `--accept-shared-state` (with `build`): the user confirmed that every password in a `state/` shared by several configs may go to this client.
 
 | Command | What it does |
 | --- | --- |
@@ -50,8 +53,10 @@ Run every command in the ansibro folder (the one with `config.yml`, `.venv/` and
 | `facts` | Reads the facts from ansibro (no network, no SSH) and prints warnings. |
 | `check` | Runs ansibro's own acceptance test on the servers. Read-only, but it connects: ask first. |
 | `build` | Writes the documents (Markdown + PDF), the credentials file and `SHA256SUMS`. `--draft` builds with empty answers, marked DRAFT. |
-| `scan` | Searches the output for secret values (`build` does this too). |
-| `passphrase` | Shows the credentials file's passphrase, only in a real terminal: the user runs it, not you. |
+| `scan` | Searches the output for secret values (`build` does this too). A file dejavu made with a secret in it is deleted. |
+| `remove-leak` | After a `leak` in `handover.yml`: replaces the secret with "(secret removed)" without showing it or its line, then searches the rest of the output. |
+| `allow` | `allow ssh IP...` or `allow admin IP...` adds IP addresses or ranges (like `203.0.113.0/24`) to `ssh.allow_from` or `admin_allow_from` in config.yml; `--remove` takes them off. It changes that one line, keeps the comments, and shows only the list. Ask first; the servers use it after `./install.sh`. |
+| `passphrase` | Shows the credentials file's passphrase, only in a real terminal and after the user types yes: the user runs it, not you, and you never answer its question. |
 
 Status lines start with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:` (lists, like the answers that are still empty, follow on indented lines). Exit codes: 0 ok, 1 failed, 2 wrong usage, 3 the user must act, 4 state/ changed (a bug: report it), 5 a secret reached a document (the files of that run are deleted), 130 stopped with Ctrl-C (state/ is closed again). Every id is explained in [references/troubleshooting.md](references/troubleshooting.md).
 
@@ -60,9 +65,9 @@ Status lines start with `ok:`, `warning [id]:`, `needs the user [id]:` or `faile
 1. **Say what will happen**, in plain words: "I will make the handover documents from the system's own settings. No password will appear in any document; passwords go in one locked file."
 2. **Doctor.** Run `doctor`. When it says `doctor --fix` would help, ask: "May I install the missing tools? mise goes into your home folder, no admin rights needed" (on a Mac also: "KeePassXC with Homebrew"). If yes, run `doctor --fix` (it downloads, so it can take a few minutes). For each `needs the user` line left, give the user the exact install command it shows (they may need their password); never run `sudo` yourself. When `.venv/` is missing, this is not the folder that ran `./install.sh`: ask for the right one.
 3. **Init and interview.** Run `init`, then ask the questions in [references/questions.md](references/questions.md), a few at a time, in the user's language. Write the answers into `handover.yml` in the output folder, in English: the documents are always in English. Leave unknown answers empty (null); the documents then say "not provided", never a guess.
-4. **Facts and warnings.** Run `facts`. Go through each warning with the user (references/troubleshooting.md says what each means). For each, the user decides: fix it (a change in `config.yml` and `./install.sh`, only with their consent) or accept it. Write an accepted one into `known_issues` in the user's words.
+4. **Facts and warnings.** Run `facts`. Go through each warning with the user (references/troubleshooting.md says what each means). For each, the user decides: fix it or accept it. To fix an allow-list, run `allow` (ask first). Any other change in `config.yml` the user makes in their own editor; you never open it. Then `./install.sh` (only with their consent) and `facts` again. Write an accepted warning into `known_issues` in the user's words.
 5. **Acceptance test (ask first).** "May I run ansibro's own test now? It logs in to every app over SSH and changes nothing." If yes, run `check`. Explain any FAIL line; fix it with consent, or record it as a known issue. Without a check, the handover certificate says "not tested" instead of "in good condition".
-6. **Build.** Run `build --draft` first, read the Markdown in `dist/` with the user (it has no secrets), correct wording in `handover.yml`, and build again. When every required answer is in, run `build` without `--draft`. The first build makes the passphrase and keeps it in `state/handover/` (encrypted with state.age when that is on).
+6. **Build.** Run `build --draft` first, read the Markdown in `dist/` with the user (it has no secrets), correct wording in `handover.yml`, and build again. When every required answer is in, run `build` without `--draft`. The first build makes the passphrase and keeps it in `state/handover/` (encrypted with state.age when that is on). When `build` stops with `failed [leak]`, follow its last lines (`remove-leak` for `handover.yml`). When it stops with `needs the user [shared-state]`, ask the question under `shared-state` in references/troubleshooting.md.
 7. **Deliver.** `build` ends with `needs the user [deliver]:`. Tell the user, in plain words:
    - Send the PDFs (and the Markdown if wanted) by email or a shared folder.
    - Hand over the `.kdbx` file on another channel (for example a USB stick in person).

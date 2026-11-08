@@ -9,6 +9,15 @@ Every version is a [GitHub release](https://github.com/sgnd/dejavu/releases). `i
 - The documents are in `dist/` itself, no longer in `dist/en/` or `dist/id/`. The first build removes those old folders (after the check for hand edits), and an old `<slug>-kredensial.kdbx`. The credentials file is always `<slug>-credentials.kdbx`, with English group names.
 - `apps.yml` holds one English text per app, note and group.
 - The test systems and the sample PDFs use English fake names and addresses.
+- Security: the agent never opens `config.yml`, which holds passwords. `SKILL.md` and the references forbid it (an edit tool reads the whole file first), and say how instead: the new `allow` command adds or removes IP addresses on `ssh.allow_from` and `admin_allow_from` in place, keeps the comments, and prints only the list; every other change is the user's, in their own editor.
+- Security: after a leak in `handover.yml`, the new `remove-leak` command replaces the value with "(secret removed)" without printing it or its line.
+- Security: the leak check also finds a secret that a file escaped (Markdown, Typst, JSON, YAML, SVG), typeset (curly quotes, dashes, a minus sign) or broke over lines, and searches the text of the PDFs when `pdftotext` is installed. On a leak, every file dejavu made with the secret in it is deleted, the PDF included.
+- Security: `servers.<name>.public_ip` in `handover.yml` must be an IP address, and a one-line answer may not hold a control character such as a line break (exit 2, `answers`). Values in the client's `ssh_config` and hosts file must be one plain word, so an answer can never add a line such as a `ProxyCommand`.
+- Security: `tls.client_ca` (and `acme_ca_cert`) must be a CA certificate. It is read and written out again, so no other file goes into the pack this way (`ca-cert`).
+- Security: when several configs share one `state/`, the final build stops (`needs the user [shared-state]`), because the credentials file would hold the other systems' passwords too. It goes on with `--accept-shared-state`, only after the user confirmed; a draft gets no credentials file.
+- Security: `passphrase` also asks the user to type yes on the terminal. The README and SECURITY.md now call the terminal check what it is: a guard against accidents, not a lock.
+- Ready for the next ansibro: it knows the password files `k3s_agent_token` (k3s workers), `alertmanager` (Alertmanager's login) and `victoria_admin_key` (the VictoriaMetrics and VictoriaLogs admin key), so they are no longer `unknown-secret`. They are optional: ansibro 1.2 and 1.3 have none.
+- Security: `install.sh` runs `gh attestation verify` against this repository's release workflow when the GitHub CLI is installed and logged in, and stops when it fails. The README shows how to install one exact version.
 
 ## 1.1.0
 

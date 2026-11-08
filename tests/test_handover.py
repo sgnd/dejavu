@@ -5,6 +5,7 @@
 
 import contextlib
 import io
+import json
 import os
 import sys
 import tempfile
@@ -67,6 +68,19 @@ class Ansibro13(unittest.TestCase):
         self.assertEqual(alerts["CacheNoPrimary"],
                          "No valkey server is the primary. Check: sudo docker exec valkey-sentinel valkey-cli")
         self.assertEqual(alerts["DiskFull"], "<instance> is full")  # other labels stay placeholders
+
+    def test_secrets_of_newer_ansibro_are_known_and_optional(self):
+        """k3s_agent_token, alertmanager and victoria_admin_key: known (never unknown-secret), and
+        optional, so an ansibro 1.2 or 1.3 without them gets no missing-secret warning."""
+        data = h.load_yaml(os.path.join(h.ASSETS, "apps.yml"))
+        for name in ("k3s_agent_token", "alertmanager", "victoria_admin_key"):
+            self.assertEqual(data["secrets"][name]["when"], "optional", name)
+        s = data["secrets"]
+        self.assertTrue(h.optional_present("k3s_agent_token", s["k3s_agent_token"], {}, {"orchestrator": "k3s"}))
+        self.assertFalse(h.optional_present("k3s_agent_token", s["k3s_agent_token"], {}, {"orchestrator": "swarm"}))
+        self.assertTrue(h.optional_present("alertmanager", s["alertmanager"], {"victoria": "srv"}, {"orchestrator": "swarm"}))
+        self.assertFalse(h.optional_present("victoria_admin_key", s["victoria_admin_key"], {}, {"orchestrator": "swarm"}))
+        self.assertTrue(h.optional_present("monitor", s["monitor"], {}, {"orchestrator": "swarm"}))  # as before
 
     def test_kong_admin_key_is_optional_and_swarm_note(self):
         data = h.load_yaml(os.path.join(h.ASSETS, "apps.yml"))
@@ -141,9 +155,13 @@ class Facts(unittest.TestCase):
             for w in app["web"]:
                 self.assertIn(w["guard"], ("admin", "admin-ip", "public"), name)
                 self.assertIn(w["login"], ("own", "layer", "none"), name)
+        f = {"app_names": [], "gv": {}, "admin_sso": "", "backup": {"enabled": False}, "wireguard": False,
+             "orchestrator": "swarm"}
         for name, s in data["secrets"].items():
             self.assertIn(s["change"], ("file", "both", "app", "internal"), name)
             self.assertIn(s["audience"], ("client", "recovery", "internal"), name)
+            h.matches(s["when"], f)  # a known condition (a KeyError otherwise)
+            self.assertIsInstance(s["verified"], bool, name)
         for e in data["entries"]:
             self.assertIn(e["secret"], data["secrets"])
             self.assertIn(e["group"], data["groups"])
@@ -175,6 +193,219 @@ class LeakGate(unittest.TestCase):
     def test_report_never_has_the_value(self):
         hits = self.scan("Zq81xTTx0", {"postgres": "Zq81xTTx0"})
         self.assertNotIn("Zq81xTTx0", str(hits))
+
+    # A secret with the characters that Markdown, Typst, YAML and JSON escape, and pandoc typesets.
+    CANARY = 'Cq_+#!"\\x9Zt-7'
+
+    def scan_file(self, name, text, needles):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = os.path.join(tmp, name)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(text)
+            return [(no, n) for _p, no, n in h.scan([p], needles)]
+
+    def test_escaped_and_typeset_secret_is_found(self):
+        c = {"postgres": self.CANARY}
+        forms = {
+            "doc.md": f"| a | {h.md_escape(self.CANARY)} |\n",              # md_escape: Cq\_\+\#\!"\\x9Zt-7
+            "doc.typ": "[x], [Cq\\_+\\#!\u201c\\\\x9Zt-7],\n",                 # what pandoc writes for Typst
+            "facts.json": "{\"note\": " + json.dumps(self.CANARY) + "}\n",
+            "handover.yml": "summary_note: \"Cq_+#!\\\"\\\\x9Zt-7\"\n",       # YAML double quotes
+            "escaped.yml": "notes: [\"\\x43q_+#!\\\"\\\\x9Zt-7\"]\n",          # \x43 is C: only YAML sees it
+            "access.svg": "<text>Cq_+#!&#34;\\x9Zt-7</text>\n",               # an SVG entity
+            "pdftext.txt": "Cq_+#!\u201d\\x9Zt\u22127\n",                      # Typst's quote and minus sign
+        }
+        for name, text in forms.items():
+            self.assertEqual(self.scan_file(name, text, c), [(1, "postgres")], name)
+
+    def test_secret_broken_over_lines_is_found(self):
+        phrase = "alpha bravo charlie delta echo foxtrot golf"
+        text = "Say the words alpha bravo charlie delta\necho foxtrot golf to the client.\n"  # pandoc wraps
+        self.assertEqual(self.scan_file("doc.typ", text, {"the passphrase": phrase}), [(1, "the passphrase")])
+        long = "Ab3dE6gH9jK2mN5p"
+        self.assertEqual(self.scan_file("doc.txt", "x Ab3dE6gH\n9jK2mN5p y\n", {"k": long}), [(1, "k")])
+
+    def test_short_secret_is_not_found_across_spaces(self):
+        self.assertEqual(self.scan_file("doc.md", "the se cret here\n", {"weak": "secret"}), [])
+
+    def test_pdf_text_is_searched(self):
+        saved = h.pdf_text
+        h.pdf_text = lambda path: "page one\nCq_+#!\u201d\\x9Zt\u22127\n"
+        try:
+            self.assertEqual(self.scan_file("doc.pdf", "%PDF-1.7", {"postgres": self.CANARY}), [(2, "postgres")])
+            h.pdf_text = lambda path: None  # no pdftotext: the PDF is skipped (its .typ is searched)
+            self.assertEqual(self.scan_file("doc.pdf", "%PDF-1.7", {"postgres": self.CANARY}), [])
+        finally:
+            h.pdf_text = saved
+
+    def test_pdf_reports_both_files(self):
+        saved = h.run
+        h.run = lambda cmd, **kw: h.subprocess.CompletedProcess(cmd, 0, "", "")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                md, out = os.path.join(tmp, "doc.md"), os.path.join(tmp, "doc.pdf")
+                got = h.pdf({"pandoc": ["pandoc"], "typst": ["typst"]}, tmp, md, out, False, "2026-11-04")
+            self.assertEqual(got, [os.path.join(tmp, "doc.typ"), out])
+        finally:
+            h.run = saved
+
+    def test_leak_gate_deletes_every_made_file_with_a_secret(self):
+        saved = h.needles
+        h.needles = lambda ab, slug: {"postgres": self.CANARY}
+        try:
+            with tempfile.TemporaryDirectory() as out:
+                files = {"handover.yml": "client: {name: Example Corp}\n",
+                         "build/doc.typ": "[Cq\\_+\\#!\u201c\\\\x9Zt-7]\n",  # only the Typst source has it
+                         "dist/doc.pdf": "%PDF-1.7\n",                         # this run's PDF of it
+                         "dist/old.md": h.md_escape(self.CANARY) + "\n",       # left by an older run
+                         "dist/clean.md": "nothing here\n",
+                         "check/acceptance.txt": self.CANARY + "\n"}           # not made by build
+                for rel, text in files.items():
+                    os.makedirs(os.path.dirname(os.path.join(out, rel)), exist_ok=True)
+                    with open(os.path.join(out, rel), "w", encoding="utf-8") as f:
+                        f.write(text)
+                said = io.StringIO()
+                with contextlib.redirect_stdout(said), self.assertRaises(h.Stop) as e:
+                    h.leak_gate(None, out, "x", fresh=[os.path.join(out, "build/doc.typ"),
+                                                        os.path.join(out, "dist/doc.pdf")])
+                self.assertEqual(e.exception.code, 5)
+                left = {rel for rel in files if os.path.exists(os.path.join(out, rel))}
+                self.assertEqual(left, {"handover.yml", "dist/clean.md", "check/acceptance.txt"})
+                self.assertIn("check/acceptance.txt was not made by this build", said.getvalue())
+                self.assertNotIn(self.CANARY, said.getvalue())
+                self.assertNotIn("remove-leak", said.getvalue())  # handover.yml is clean
+        finally:
+            h.needles = saved
+
+
+class RemoveLeak(unittest.TestCase):
+    """remove-leak takes a secret out of handover.yml, and never shows it."""
+
+    SECRET = 'Cq_+#!"\\x9Zt-7'
+
+    def setUp(self):
+        self.saved = h.needles
+        h.needles = lambda ab, slug: {"postgres": self.SECRET}
+        self.tmp = tempfile.TemporaryDirectory()
+        self.out = self.tmp.name
+        self.ab = h.Ansibro(self.tmp.name, "config.yml")
+
+    def tearDown(self):
+        h.needles = self.saved
+        self.tmp.cleanup()
+
+    def run_it(self, text):
+        path = os.path.join(self.out, "handover.yml")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.chmod(path, 0o600)
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said), self.assertRaises(h.Stop) as e:
+            h.cmd_remove_leak(self.ab, h.argparse.Namespace(out=self.out), {})
+        with open(path, encoding="utf-8") as f:
+            return e.exception.code, f.read(), said.getvalue()
+
+    def test_every_written_form_is_taken_out(self):
+        text = ("# the answers\nclient: {name: Example Corp}  # kept\n"
+                "summary_note: \"Note Cq_+#!\\\"\\\\x9Zt-7 here\"\n"
+                "known_issues: ['Cq_+#!\"\\x9Zt-7']\n"
+                "notes:\n  - https://hooks.slack.com/services/T0/B0/abcdef\n  - plain text\n")
+        code, new, said = self.run_it(text)
+        self.assertEqual(code, 0, said)
+        self.assertEqual(h.scan_text(new, {"postgres": self.SECRET}, yaml_file=True), [])
+        a = h.yaml.safe_load(new)
+        self.assertEqual(a["summary_note"], "Note (secret removed) here")
+        self.assertEqual(a["known_issues"], ["(secret removed)"])
+        self.assertEqual(a["notes"], ["(secret removed)", "plain text"])
+        self.assertTrue(new.startswith("# the answers\nclient: {name: Example Corp}  # kept\n"))
+        self.assertNotIn(self.SECRET, said)
+        self.assertNotIn("hooks.slack.com", said)
+        self.assertEqual(os.stat(os.path.join(self.out, "handover.yml")).st_mode & 0o777, 0o600)
+
+    def test_a_private_key_is_left_to_the_user(self):
+        text = "notes:\n  - |\n    -----BEGIN OPENSSH PRIVATE KEY-----\n    b3BlbnNzaC1rZXk\n"
+        code, new, said = self.run_it(text)
+        self.assertEqual(code, 1)
+        self.assertEqual(new, text)
+        self.assertIn("line 3", said)
+        self.assertNotIn("b3BlbnNzaC1rZXk", said)
+
+    def test_nothing_to_take_out(self):
+        code, new, said = self.run_it("client: {name: Example Corp}\n")
+        self.assertEqual((code, new), (0, "client: {name: Example Corp}\n"))
+        self.assertIn("has no secret value", said)
+
+
+class Allow(unittest.TestCase):
+    """allow changes one allow-list in config.yml, keeps every other line, and never shows the file."""
+
+    def set(self, text, path, values):
+        new = h.set_yaml_list(text, path, values)
+        if new is not None:  # what cmd_allow checks too: only that one list changed
+            want = h.yaml.safe_load(text) or {}
+            node = want
+            for k in path[:-1]:
+                node = node.setdefault(k, {})
+            node[path[-1]] = values
+            self.assertEqual(h.yaml.safe_load(new), want)
+        return new
+
+    def test_ansibro_example_form_keeps_the_comment(self):
+        text = "ssh:\n  user: ubuntu\n  allow_from: []           # IPs or ranges. Empty = anyone\n  port: 22\n"
+        self.assertEqual(self.set(text, ("ssh", "allow_from"), ["203.0.113.0/24"]),
+                         "ssh:\n  user: ubuntu\n  allow_from: [203.0.113.0/24]  # IPs or ranges. Empty = anyone\n"
+                         "  port: 22\n")
+
+    def test_block_list_is_replaced(self):
+        text = "domain: x.example\nadmin_allow_from:   # offices\n  - 198.51.100.7\n  # the VPN\n  - 192.0.2.1\ntls: acme\n"
+        self.assertEqual(self.set(text, ("admin_allow_from",), ["198.51.100.7", "192.0.2.1", "2001:db8::/32"]),
+                         "domain: x.example\nadmin_allow_from: [198.51.100.7, 192.0.2.1, 2001:db8::/32]  # offices\n"
+                         "  # the VPN\ntls: acme\n")
+
+    def test_missing_lists_are_added(self):
+        text = "domain: x.example\nssh:\n  user: ubuntu\n  key: ~/.ssh/id   # change\n\n# Apps\napps: {traefik: swarm}"
+        new = self.set(text, ("ssh", "allow_from"), ["203.0.113.7"])
+        self.assertIn("  key: ~/.ssh/id   # change\n  allow_from: [203.0.113.7]\n\n# Apps\n", new)
+        self.assertTrue(self.set("domain: x\n", ("admin_allow_from",), ["1:2:3:4:5:6:7:8"])
+                        .endswith('admin_allow_from: ["1:2:3:4:5:6:7:8"]\n'))  # YAML would read it as a number
+        self.assertEqual(self.set("domain: x\n", ("ssh", "allow_from"), ["203.0.113.7"]),
+                         "domain: x\nssh:\n  allow_from: [203.0.113.7]\n")
+
+    def test_unusual_forms_are_refused(self):
+        self.assertIsNone(h.set_yaml_list("ssh: {user: ubuntu}\n", ("ssh", "allow_from"), ["203.0.113.7"]))
+        self.assertIsNone(h.set_yaml_list("admin_allow_from: [\n  1.2.3.4]\n", ("admin_allow_from",), ["1.2.3.4"]))
+
+    def allow(self, *items, remove=False):
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said), self.assertRaises(h.Stop) as e:
+            h.cmd_allow(self.ab, h.argparse.Namespace(items=list(items), remove=remove), {})
+        return e.exception.code, said.getvalue()
+
+    def test_command_never_shows_the_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            for f in ("inventory.py", "catalog.yml", "site.yml", "versions.yml"):
+                open(os.path.join(d, f), "w").close()
+            text = ("domain: x.example   # change\nssh:\n  user: ubuntu\n"
+                    "backup:\n  repository: s3:https://s3.example.com/b\n  s3_secret_key: CANARY-s3-Secret-77\n"
+                    "monitoring:\n  telegram: {bot_token: \"CANARY-bot:Token\", chat_id: 1}\n")
+            path = os.path.join(d, "config.yml")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.chmod(path, 0o640)
+            self.ab = h.Ansibro(d, "config.yml")
+            code, said = self.allow("ssh", "203.0.113.0/24", "198.51.100.7")
+            self.assertEqual(code, 0, said)
+            self.assertIn("ssh.allow_from in config.yml is now: 203.0.113.0/24, 198.51.100.7", said)
+            self.assertNotIn("CANARY", said)
+            with open(path, encoding="utf-8") as f:
+                new = f.read()
+            self.assertEqual(new, text.replace("  user: ubuntu\n", "  user: ubuntu\n  allow_from: [203.0.113.0/24, 198.51.100.7]\n"))
+            self.assertEqual(os.stat(path).st_mode & 0o777, 0o640)
+            code, said = self.allow("ssh", "198.51.100.7", remove=True)
+            self.assertIn("is now: 203.0.113.0/24", said)
+            self.assertEqual(self.allow("admin", "not-an-ip")[0], 2)
+            self.assertEqual(self.allow("ssh", "fe80::1%eth0")[0], 2)
+            self.assertEqual(self.allow("dns", "203.0.113.7")[0], 2)
 
 
 class Answers(unittest.TestCase):
@@ -221,6 +452,103 @@ class Answers(unittest.TestCase):
             a = self.answers(f.read().replace("  # SERVERS", "  server1: {public_ip: null}"))
         self.assertEqual(a["certificate"]["first_party"], "vendor")
         self.assertEqual(self.said.getvalue(), "")
+
+    def refused(self, text):
+        with self.assertRaises(h.Stop) as e:
+            self.answers(text)
+        self.assertEqual(e.exception.code, 2, text)
+        return self.said.getvalue()
+
+    def test_public_ip_is_an_ip_address(self):
+        # A line break would add a ProxyCommand (or any setting) to the client's ssh_config.
+        said = self.refused('servers: {srv: {public_ip: "203.0.113.5\\n  ProxyCommand sh -c evil"}}\n')
+        self.assertNotIn("ProxyCommand", said)
+        for bad in ("srv.example.com", "203.0.113.5 extra", "fe80::1%eth0", "203.0.113.500"):
+            self.refused(f'servers: {{srv: {{public_ip: "{bad}"}}}}\n')
+        a = self.answers("servers: {srv: {public_ip: 203.0.113.5}, db: {public_ip: '2001:db8::5'}, x: null}\n")
+        self.assertEqual(a["servers"]["db"]["public_ip"], "2001:db8::5")
+
+    def test_no_control_characters(self):
+        self.refused('client: {name: "Example\\nHost evil"}\n')
+        self.refused('vendor: {signer: {name: "Ann\\tLee"}}\n')
+        self.refused('summary_note: "colour \\e[31m red"\n')  # an escape sequence, even in free text
+        self.refused('servers: {"srv\\nx": {public_ip: null}}\n')  # also in a name
+        a = self.answers("summary_note: |\n  Two lines\n  of text.\nclient: {address: \"1 Main St\\nLondon\"}\n")
+        self.assertEqual(a["summary_note"], "Two lines\nof text.\n")
+        said = self.refused('known_issues: ["ok", "bad \\x07 bell"]\n')
+        self.assertIn("known_issues[2]", said)
+
+
+class SshConfig(unittest.TestCase):
+    """Values in the client's ssh_config and hosts file are one plain word each."""
+
+    def test_ssh_word(self):
+        for good in ("203.0.113.5", "2001:db8::1", "northwind-manager1", "~/.ssh/northwind_ed25519", 22):
+            self.assertEqual(h.ssh_word(good), str(good))
+        for bad in ("203.0.113.5\n  ProxyCommand evil", "a b", "x;y", "%h", ""):
+            with self.assertRaises(h.jinja2.TemplateError):
+                h.ssh_word(bad)
+
+    def test_templates_refuse_an_injected_line(self):
+        env = h.jinja_env()
+        n = {"alias": "x-srv", "address": "203.0.113.5\n  ProxyCommand evil", "jump": None, "direct": True,
+             "traefik": True, "public_ip": None}
+        ctx = {"a": {"client": {"name": "Example\nHost *"}}, "f": {"domain": "example.org", "ssh": {"user": "ubuntu",
+               "port": 22}, "tunnels": []}, "dejavu": "1.1.0", "reach": [n], "slug": "x", "web": [{"host": "a"}]}
+        for tpl in ("ssh_config.txt.j2", "hosts.txt.j2"):
+            with self.assertRaises(h.jinja2.TemplateError):
+                env.get_template(tpl).render(**ctx)
+        n["address"] = "203.0.113.5"
+        text = env.get_template("ssh_config.txt.j2").render(**ctx)
+        self.assertIn("# SSH settings for Example Host * (example.org)", text)  # the name stays a comment
+        self.assertEqual([x for x in text.splitlines() if x.startswith("Host ")], ["Host x-srv"])
+
+
+class CaCert(unittest.TestCase):
+    """tls.client_ca (and acme_ca_cert) must be a CA certificate; only the certificate goes into the pack."""
+
+    def cert(self, ca):
+        import datetime as dt
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        key = ec.generate_private_key(ec.SECP256R1())
+        name = x509.Name([x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, "Test CA" if ca else "www.example.org")])
+        now = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        c = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+             .serial_number(1).not_valid_before(now).not_valid_after(now + dt.timedelta(days=30))
+             .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
+             .sign(key, hashes.SHA256()))
+        pem = c.public_bytes(serialization.Encoding.PEM)
+        key_pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                    serialization.NoEncryption())
+        return pem, key_pem
+
+    def ca_pem(self, data):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "ca.crt")
+            with open(p, "wb") as f:
+                f.write(data)
+            with contextlib.redirect_stdout(io.StringIO()):
+                return h.ca_pem(p, "tls.client_ca")
+
+    def test_a_ca_certificate_is_written_again(self):
+        with open(os.path.join(HERE, "fixtures", "stepca", "ca.crt"), "rb") as f:
+            raw = f.read()
+        self.assertEqual(self.ca_pem(raw), raw)
+        pem, key = self.cert(ca=True)
+        got = self.ca_pem(key + pem)  # a key next to the certificate never goes into the pack
+        self.assertEqual(got, pem)
+        self.assertNotIn(b"PRIVATE KEY", got)
+
+    def test_anything_else_is_refused(self):
+        pem, key = self.cert(ca=False)
+        for data in (pem, key, b"not a certificate\n", b"\x00\x01binary"):
+            with self.assertRaises(h.Stop) as e:
+                self.ca_pem(data)
+            self.assertEqual(e.exception.code, 2)
+        with self.assertRaises(h.Stop), contextlib.redirect_stdout(io.StringIO()):
+            h.ca_pem("/nonexistent/ca.crt", "tls.client_ca")
 
 
 class Doctor(unittest.TestCase):

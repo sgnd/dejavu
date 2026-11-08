@@ -202,7 +202,7 @@ Goal: tell your computer the address of each web page, because there is no DNS. 
 {% set t = traefik_nodes | first %}
 ```text
 {% for w in web %}
-{{ t.public_ip or t.address }}  {{ w.host }}.{{ f.domain }}
+{{ (t.public_ip or t.address) | ssh }}  {{ w.host | ssh }}.{{ f.domain | ssh }}
 {% endfor %}
 ```
 

@@ -52,7 +52,7 @@ Ask in this order. Skip a question when `handover.yml` already has the answer.
 | `ssh_handover` | Can the client make their own SSH key, or should we make one? | `client_key` (safest) or `generated` |
 | `state_owner` | After the handover, who keeps the ansibro folder to change the system: the vendor or the client? | `vendor`. The client always gets a copy in the credentials file |
 
-When a person's IP is outside an allow-list, the draft (`build --draft`) says so in the laptop section. Tell the user now: the vendor adds it to `config.yml` and runs `./install.sh` (with consent).
+When a person's IP is outside an allow-list, the draft (`build --draft`) says so in the laptop section. Tell the user now. With their consent, add it with `allow ssh IP` (operators) or `allow admin IP` (everyone who opens the admin pages), then `./install.sh` (ask first). Never open `config.yml` yourself.
 
 ## 6. Delivery and after
 

@@ -221,6 +221,31 @@ printf 'known_issues: ["%s"]\n' "$secret" >>"$TMP/minimal/out/handover.yml"
 expect 5 build minimal --draft
 has "contains postgres"
 if printf '%s\n' "$out" | grep -qF -- "$secret"; then fail "the leak report shows the secret value"; else pass; fi
+# A secret with characters that Markdown, Typst and YAML escape (_ + # ! " \), written in handover.yml
+# with YAML escapes: still found. remove-leak takes it out without showing it; the next build works.
+system minimal
+printf '%s\n' 'CANARY_+#!"\x9-special' >"$sys/state/secrets/postgres"
+printf '%s\n' 'summary_note: "Note CANARY_+#!\"\\x9-special"' >>"$outdir/handover.yml"
+expect 5 build minimal --draft
+has "contains postgres"
+if printf '%s\n' "$out" | grep -qF -- 'CANARY_+#!'; then fail "the leak report shows the secret value"; else pass; fi
+expect 0 "$PY" "$H" remove-leak --ansibro "$sys" --out "$outdir"
+has "took out postgres"
+if printf '%s\n' "$out" | grep -qF -- 'CANARY_+#!'; then fail "remove-leak shows the secret value"; else pass; fi
+if grep -qF CANARY "$outdir/handover.yml"; then fail "remove-leak left the secret in handover.yml"; else pass; fi
+expect 3 build minimal --draft
+no_leak "minimal (special characters)"
+# Several configs share one state/: the final build stops before another system's passwords go into
+# the credentials file, until the user confirms; a draft has no credentials file.
+system swarm-1-server
+cp "$sys/config.yml" "$sys/config.staging.yml"
+expect 3 build swarm-1-server
+has "needs the user [shared-state]"
+expect 0 build swarm-1-server --draft
+has "warning [shared-state]"
+if [ -n "$(find "$outdir/dist" -name '*.kdbx')" ]; then fail "a shared state/ went into a credentials file"; else pass; fi
+expect 3 build swarm-1-server --accept-shared-state
+has "handover pack ready"
 # The output folder inside a git repository: refused.
 mkdir -p "$TMP/repo/out" && git -C "$TMP/repo" init -q
 cp "$SRC/tests/fixtures/minimal/handover.yml" "$TMP/repo/out/"

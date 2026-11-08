@@ -2,13 +2,15 @@
 
 Each status line of `handover.py` starts with `ok:`, `warning [id]:`, `needs the user [id]:` or `failed [id]:`. Find the id here.
 
+`config.yml` holds passwords, so never open it (no Read, `cat`, `grep` or Edit). An allow-list changes with `allow`; every other change in `config.yml` the user makes in their own editor, while you say which setting and which value. The current settings are in `facts.json`.
+
 ## Warnings from `facts`: the user decides
 
-Go through each with the user. They either fix it (a change in `config.yml`, then `./install.sh`, only with their consent) or accept it: then write it into `known_issues` in their words. Every warning in this section also appears in the documents, in the known-issues appendix.
+Go through each with the user. They either fix it (`allow` for an allow-list, or a change the user makes in `config.yml`; then `./install.sh`, only with their consent) or accept it: then write it into `known_issues` in their words. Every warning in this section also appears in the documents, in the known-issues appendix.
 
 | Id | What it means | What to say or do |
 | --- | --- | --- |
-| `allowlist-empty` | `ssh.allow_from` or `admin_allow_from` is empty, so anyone on the internet can try to log in to SSH or open the admin pages. | Recommend listing the office or VPN IPs. The documents say "open to anyone". |
+| `allowlist-empty` | `ssh.allow_from` or `admin_allow_from` is empty, so anyone on the internet can try to log in to SSH or open the admin pages. | Recommend listing the office or VPN IPs. With the user's consent: `allow ssh IP...` and `allow admin IP...`, then `./install.sh` (ask first). Include the vendor's own IP, or the vendor loses access. The documents say "open to anyone". |
 | `tls-selfsigned` | The web pages use a certificate browsers do not trust, so every page shows a warning. | Recommend `tls: custom` (a bought or company certificate) or an internal CA (`acme_server`). |
 | `custom-cert-expires` | The certificate in `tls_cert` ends within 90 days. | Renew it before the handover, or record who renews it. |
 | `no-backup` | `backup:` is not set: nothing is backed up. | Strongly recommend setting a backup repository. The handover certificate notes it. |
@@ -23,9 +25,9 @@ Go through each with the user. They either fix it (a change in `config.yml`, the
 | `unknown-app` | An app dejavu does not know (a newer ansibro). | The documents use ansibro's own short text. Ask the user for a sentence about it and put it in `extra_apps`. |
 | `not-documented` | A setting in `config.yml` that dejavu does not know. | It is left out of the documents. Report it so dejavu learns it. |
 | `ansibro-untested-version` | ansibro is newer or older than the versions this skill was tested with. | The documents are still made; read them carefully. |
-| `handover-json-outdated` | ansibro's `state/handover.json` does not match `config.yml` (other servers, apps, addresses or app placement): the config changed after the last install, or the file is broken or in an unknown form. dejavu read the settings through ansible instead. | Ask whether the change was meant to be installed. If yes, run `./install.sh` (with consent) before the handover; if not, undo it in `config.yml`. |
+| `handover-json-outdated` | ansibro's `state/handover.json` does not match `config.yml` (other servers, apps, addresses or app placement): the config changed after the last install, or the file is broken or in an unknown form. dejavu read the settings through ansible instead. | Ask whether the change was meant to be installed. If yes, run `./install.sh` (with consent) before the handover; if not, the user undoes it in `config.yml`. |
 | `ansibro-dirty` | The ansibro folder has changes that are not committed. | Check that what was installed is what is in the folder. |
-| `shared-state` | There are several `config*.yml` here, sharing one state/. | Make sure `--config` names the one this handover is about. |
+| `shared-state` | There are several `config*.yml` here, sharing one state/. Its password files belong to every system installed from here, and dejavu cannot tell which are this one's. | Make sure `--config` names the one this handover is about. The final build stops (`needs the user [shared-state]`), and a draft has no credentials file: see below. |
 
 ## Other warnings (doctor, check, build)
 
@@ -33,7 +35,7 @@ These are printed by other commands and are not in the documents.
 
 | Id | What it means | What to do |
 | --- | --- | --- |
-| `weak-secret` | A password in `config.yml` (backup or alerts) is shorter than 6 characters, so the leak check cannot search for it. | Recommend a longer one. |
+| `weak-secret` | A password in `config.yml` (backup or alerts) is shorter than 6 characters, so the leak check cannot search for it. | Recommend a longer one: the user changes it in `config.yml` and at the service, then runs `./install.sh`. |
 | `state-not-encrypted` | state/ is open (plain) while an age key exists. | Suggest `scripts/state.sh close` after the build. |
 | `check-failed` | ansibro's acceptance test has FAIL lines, or `tests/check.py` stopped with an error (then the last line says its exit code). | Explain each one; fix with consent, or record it as a known issue. |
 | `server-facts` | `check` could not read the servers' details (vCPU, memory, disk, OS, SSH host key) with ansible; its last message is shown. | Check that the servers are reachable over SSH from this machine, then run `check` again. The documents leave those details out. |
@@ -58,23 +60,27 @@ These are printed by other commands and are not in the documents.
 | `no-state` (also a warning), `no-passphrase` | There is no state/ here: this is not the folder that ran `./install.sh`. Or run `build` first. |
 | `ssh-key` | dejavu made the client's SSH key (`ssh_handover: generated`). It is kept in `state/handover/`, so every build hands over the same key. Ask the user to add `dist/<slug>_ed25519.pub` to `~/.ssh/authorized_keys` on every server before the handover meeting. |
 | `deliver` | The pack is ready. Tell the user how to hand over the file and the passphrase (SKILL.md, step 7). |
+| `shared-state` | Several configs share one state/, so the credentials file and the ansibro installer archive in it would also hold the passwords of the other systems. Ask the user: "state/ is shared with (the other configs). Everything in it would go into the credentials file for this client, also passwords of the other systems. May every password in state/ go to this client?" Only after a clear yes, build again with `--accept-shared-state`. If not: the other systems need their own ansibro folder, each with its own state/. |
 
 ## Failed (exit 1, 2, 4, 5)
 
 | Id | What it means | What to do |
 | --- | --- | --- |
 | `not-ansibro` | This folder has no `inventory.py`, `catalog.yml`, `site.yml` or `versions.yml`. | Run in the ansibro folder, or pass `--ansibro DIR`. |
-| `config` | ansibro itself refused `config.yml`; its message is shown as it is. | Fix `config.yml` as the message says. |
+| `config` | ansibro itself refused `config.yml` (or `allow` could not read it); its message is shown as it is. | Tell the user what the message says. The user fixes it in their own editor: never open `config.yml` yourself. An allow-list can be fixed with `allow`. |
+| `allow` (exit 1 or 2) | `allow` got no list or no valid IP address (exit 2), or `config.yml` is written in a form it cannot change safely (exit 1). Nothing was changed. | Exit 2: run it again with `ssh` or `admin` and IP addresses or ranges. Exit 1: the user sets the line the message shows, in their own editor. |
+| `ca-cert` (exit 2) | `tls.client_ca` in `handover.yml` (or `acme_ca_cert` in config.yml) is not a readable CA certificate. Only a CA certificate goes into the pack, never another file. | Ask for the CA (root) certificate that signed the server certificates, a `.crt` or `.pem` file, and fix the path. |
 | `ansible` | ansible could not read ansibro's settings. | Check that `.venv/` is ansibro's (run `./install.sh` once), then try again. |
 | `state-guard` (exit 4) | Reading the facts would have created a password. Nothing was changed. | A dejavu bug: report it, with the dejavu and ansibro versions. |
 | `state-both` | Both state/ and state.age are here. | Do not delete either: move one into a backup folder, then run again. |
 | `state-open`, `state-close` | ansibro's `scripts/state.sh` failed. | After `state-close`, run `scripts/state.sh close` yourself at once. |
 | `out-in-git` | The output folder is inside a git repository. | Use a folder outside every repository (the default `~/Handover/...` is). |
-| `answers` (exit 2) | `handover.yml` has an unknown setting or a wrong value. | Fix the line named in the message. |
+| `answers` (exit 2) | `handover.yml` has an unknown setting or a wrong value: for example a `public_ip` that is not an IP address, or a control character (a line break or a tab) in a one-line answer. | Fix the setting named in the message. |
 | `template` | A document template could not be rendered. | A dejavu bug: report it with the message. |
 | `pandoc`, `typst`, `d2` | A PDF tool failed. | Read the message; run `doctor`. Report it if it persists. |
 | `keepassxc`, `vault-check` | keepassxc-cli failed, or the credentials file did not hold the right value. | Run `doctor`; update KeePassXC to 2.7.6 or newer; build again with `--rebuild-vault`. |
 | `ssh-keygen` | Making the client's SSH key failed. | Install the OpenSSH client, or use `ssh_handover: client_key`. |
 | `hand-edit` | A document in `dist/` was edited by hand. | Put the wording in `handover.yml` and build again (or `--force` to overwrite). |
-| `not-a-terminal` | `passphrase` runs only in a real terminal. | The user runs it in their own Terminal. Never run it yourself. |
-| `leak` (exit 5) | A secret value reached a generated file. That run's files were deleted. | Remove the value (usually pasted into `handover.yml`), then build again. Never paste the value into the chat. |
+| `not-a-terminal` | `passphrase` runs only in a real terminal, and asks the user to type yes. This guards against accidents; it is not a lock. | The user runs it in their own Terminal. Never run it yourself, and never answer its question. |
+| `leak` (exit 5) | A secret value reached a file: as it is, escaped (Markdown, Typst, YAML, JSON) or typeset (in a PDF). The files of that run, and every file dejavu made with a secret in it, were deleted. | When the last lines name `handover.yml`: do not open it; run `remove-leak`, reword the lines it names with the user, then build again. Another file (for example in `check/`) the user deletes. Never paste the value into the chat. |
+| `remove-leak` | `remove-leak` could not take the secret out of `handover.yml` safely (a private key, or a value split over lines). The file was not changed. | The user deletes or rewords the line numbers it names, in their own editor. Then run `remove-leak` again. |
